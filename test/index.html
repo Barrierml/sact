@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="root">
+        <btn :jiayi="ww"></btn>
+        <test s-for="qq in ff" :text="qq"></test>
+    </div>
+    <script type="module">
+        import Sact from "../src/sact.js"
+        let btn = new Sact({
+            isComponent: true,
+            template: "<button @focus='lili' @click='props.jiayi'>添加</button>",
+            method:{
+                lili(){
+                    console.log(this)
+                }
+            }
+        })
+        let qc = new Sact({
+            isComponent: true,
+            template: "<div>{{props.text}}<p>{{qq}}</p></div>",
+            data: { qq: 123 },
+            props: { text: "haha" },
+        })
+        window.qq = new Sact({
+            ele: "#root",
+            data: {
+                qq: 123,
+                load:false,
+                ff: [1, 2, 3],
+            },
+            method: {
+                ww(){
+                    console.log(this);
+                }
+            },
+            component: {
+                test: qc,
+                btn,
+            }
+        })
+    </script>
+</body>
+
+</html>
