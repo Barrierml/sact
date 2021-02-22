@@ -10,41 +10,44 @@
 
 <body>
     <div id="root">
-        <btn :jiayi="ww"></btn>
-        <test s-for="qq in ff" :text="qq"></test>
+        <button @click="ww" :value="'qq'">{{qq}}</button>
+        <button @click="sc" :value="'qq'">{{qq}}</button>
+        <button @click="show" :value="'qq'">显示</button>
+        <test s-if="load" :text="qq" s-for="qq in ff" :key="qq"></test>
     </div>
     <script type="module">
         import Sact from "../src/sact.js"
-        let btn = new Sact({
-            isComponent: true,
-            template: "<button @focus='lili' @click='props.jiayi'>添加</button>",
-            method:{
-                lili(){
-                    console.log(this)
-                }
+        let test = Sact.component({
+            template: "<div><p>{{count}}</p><button @click='jiayi'>点我</button></div>",
+            data() {
+                return { count: 0 }
+            },
+            method: {
+                jiayi() {
+                    this.data.count++;
+                },
             }
-        })
-        let qc = new Sact({
-            isComponent: true,
-            template: "<div>{{props.text}}<p>{{qq}}</p></div>",
-            data: { qq: 123 },
-            props: { text: "haha" },
         })
         window.qq = new Sact({
             ele: "#root",
             data: {
                 qq: 123,
-                load:false,
+                load: true,
                 ff: [1, 2, 3],
             },
             method: {
-                ww(){
-                    console.log(this);
+                ww() {
+                    this.data.ff.push("123")
+                },
+                sc() {
+                    this.data.ff.splice(1, 2)
+                },
+                show() {
+                    this.data.load = !this.data.load
                 }
             },
             component: {
-                test: qc,
-                btn,
+                test,
             }
         })
     </script>

@@ -2,8 +2,7 @@
 
 
 import initAll from "./init.js";
-import raise from "./vnode.js";
-import render from "./render.js";
+import render, { _patch } from "./render.js";
 
 
 export default class Sact {
@@ -12,18 +11,27 @@ export default class Sact {
 
     this.$ele = undefined;
     initAll(this, options);
-
-    this._render();
+    //首次渲染
+    !this.isComponent && this.render();
   }
 
-  _render() {
-    if(!this.isComponent){
-      let vnode =  raise(this.$createVnode,this);
-      this.$vnode = vnode;
-      render(vnode, this.$ele)
-    }
+  render() {
+    this.$vnode = this._render();
+    render(this.$vnode, this.$ele);
   }
-  render(){
-    
+
+  patch() {
+    let oldVnode = this.$vnode;
+    this.$vnode = this._render();
+    _patch(oldVnode, this.$vnode);
+  }
+
+
+  notify() {
+    this.patch();
+  }
+
+  static component(options) {
+    return function () { return new Sact({ ...options, isComponent: true }) }
   }
 }

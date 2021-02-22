@@ -2,48 +2,52 @@ import { extend, isObj } from "./untils.js";
 
 //生成函数语法对应的vnode
 export default function raise(fn, vm) {
-    vm._c_ = (a, b, c) => createVnode(vm, a, b, c);
+    vm._c_ = (a, b, c, zid) => createVnode(vm, a, b, c, zid);
     vm._f_ = (i, f) => createFor(i, f)
     return fn.apply(vm);
 }
 
 class Vnode {
-    constructor(vm, a, b, c, d) {
+    constructor(vm, a, b, c, d, istext,zid) {
 
         this.context = vm
-        this.tag = a
+        this.tag = istext ? "_text_" : a
         this.data = b
         this.componentOptions = d
 
-        this.parent = undefined
-        this.text = undefined
+        // this.parent = undefined
+        this.text = istext ? a : undefined
+        this.key = b?.key;
         this.element = undefined
 
-        this.children = genVdomChildren(c)
+        this.zid = zid
+        this.children = genVdomChildren(c, vm)
     }
 }
 
 
 
-function createVnode(vm, a, b, c) {
+function createVnode(vm, a, b, c, zid) {
     const { componentList, components } = vm;
     if (componentList && componentList.includes(a)) { //当a是自定义组件时
-        return createComponent(components[a], b, vm, c, a);
+        return createComponent(components[a], b, vm, c, a, zid);
     }
     else {
-        return new Vnode(vm, a, b, c, undefined);
+        return new Vnode(vm, a, b, c, undefined, false, zid);
     }
 }
 
-function createComponent(Ctor, data, context, children, tag) {
+function createComponent(Ctor, data, context, children, tag, zid) {
+    Ctor = Ctor();
+    //留下组件的渲染方法的接口
+    Ctor._render = () => raise(Ctor.$createVnode, extend(Ctor, { props: parsePropsData(data) }));
     let vnode = new Vnode(context,
-        ("sact-component-" + (Ctor.cid) + tag),
+        ("sact-component-" + (zid) + "-" + tag),
         data, undefined, {
         Ctor: Ctor,
         tag: tag,
         children: children,
-        _render: raise(Ctor.$createVnode, extend(Ctor, { props: parsePropsData(data) })),
-    });
+    },false,zid);
     return vnode
 }
 
@@ -79,14 +83,17 @@ function createFor(iterater, fn) {
     return res
 }
 //合并生成的列表
-function genVdomChildren(list) {
+function genVdomChildren(list, vm) {
     let res = [];
     if (list) {
         for (let i of list) {
             if (Array.isArray(i)) {
                 res = res.concat(genVdomChildren(i));
             }
-            else if(i !== null){
+            else if (typeof i === "string") {
+                res.push(new Vnode(vm, i, undefined, undefined, undefined, true))
+            }
+            else if (i !== null) {
                 res.push(i);
             }
         }

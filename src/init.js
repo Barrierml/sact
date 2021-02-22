@@ -1,6 +1,8 @@
-import { extend, isObj } from "./untils.js";
+import { isObj } from "./untils.js";
 import Parse from "./Parser.js"
 import Generate from "./generate.js"
+import { reactivate } from "./reactivity.js";
+import raise from "./vnode.js";
 
 export default function initAll(sact, options) {
     sact.$optinons = options;
@@ -8,7 +10,8 @@ export default function initAll(sact, options) {
     initData(sact, options);
     initMethod(sact, options);
     initComponent(sact, options);
-    initRender(sact,options);
+    initRender(sact, options);
+    initProps(sact, options);
 }
 
 //初始化对象
@@ -24,9 +27,11 @@ function initElement(sact, options) {
 
 //初始化数据
 function initData(sact, options) {
-    if (isObj(options.data)) {
-        extend(sact, options.data);
+    let data = options.data;
+    if(options.data && typeof options.data === "function"){
+        data = data();
     }
+    sact.data = reactivate(sact, data || {});
 }
 
 //初始化方法
@@ -37,8 +42,8 @@ function initMethod(sact, options) {
             if (!typeof method[funName] === "function") {
                 throw new Error(`${funName} 不为function，请检查！`)
             }
+            sact[funName] = options.method[funName].bind(sact);
         };
-        extend(sact, method);
     }
 }
 
@@ -48,9 +53,8 @@ function initComponent(sact, options) {
     let { isComponent, component } = options;
     if (isComponent) { //自身为组件时
         sact.isComponent = true;
-        sact.$createVnode = Generate(Parse(sact.$template))
-        sact.cid = Number.parseInt(Math.random()*100);
-        
+        sact.cid = Number.parseInt(Math.random() * 100);
+
     }
 
     if (isObj(component)) { //使用组件时,将组件添加到环境中
@@ -63,10 +67,21 @@ function initComponent(sact, options) {
 }
 
 //初始化渲染功能
-function initRender(sact,options){
+function initRender(sact, options) {
     let { isComponent } = options;
+    sact.$createVnode = Generate(Parse(sact.$template))
     //不是组件时的渲染方法
-    if(!isComponent){
-        sact.$createVnode = Generate(Parse(sact.$template))
+    if (!isComponent) {
+        sact._render = ()=>raise(sact.$createVnode,sact);
+    }
+    //当sact为组件时的渲染方法在vnode里面生成
+}
+
+
+//初始化继承
+function initProps(sact, options) {
+    let { props } = options;
+    if (props) {
+        sact.props = props;
     }
 }

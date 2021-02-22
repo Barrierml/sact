@@ -22,10 +22,13 @@ export function isBaseType(obj){
 }
 
 export function isObj(obj){
-    return obj && typeof (obj) === "object"
+    return obj && typeof (obj) === "object" && obj !== null
 }
 //扩展对象属性
 export function extend(obj, res) {
+    if(!isObj(res)){
+        return
+    }
     for (let i of Reflect.ownKeys(res)) {
         obj[i] = res[i]
     }

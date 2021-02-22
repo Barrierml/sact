@@ -23,6 +23,12 @@ export default {
         const parent = odom.parentNode;
         parent && parent.replaceChild(ndom, odom);
     },
+    next(dom){
+        return dom?.nextElementSibling;
+    },
+    pre(dom){
+        return dom?.previousElementSibling;
+    },
     //更改元素文本
     setElementText(el,text){
         el.textContent = text;

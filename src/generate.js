@@ -1,9 +1,15 @@
 //将ast语法树转化成语法
 import { getAndRemoveAttr, getDynamicName, AttrsTag } from "./untils.js"
+//给每个元素附上索引
+let zid = 0;
 const simplePathRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/
 export default function generate(ast) {
     const code = genElement(ast);
-    return new Function(`with(this){return ${code}}`)
+    return new Function(`with(this){
+        with(data){
+             return ${code}
+        }
+    }`)
 }
 
 function genElement(ast) {
@@ -18,7 +24,7 @@ function genElement(ast) {
         return genTemplate(ast);
     }
     else {
-        return `_c_('${ast.tagName}', ${genData(ast)}, ${genChildren(ast)})`;
+        return `_c_('${ast.tagName}', ${genData(ast)}, ${genChildren(ast)},${zid++})`;
     }
 }
 
@@ -73,6 +79,9 @@ function genData(ast) {
             name = name.replace(/^:|^s-bind:|^s:/, '');
             if (name === 'style') {
                 data += `style: ${value},`;
+            }
+            else if (name === 'key') {
+                data += `key: (${value}),`;
             } else if (/^(value|selected|checked|muted)$/.test(name)) {
                 hasProps = true;
                 props += `"${name}": (${value}),`;
