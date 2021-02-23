@@ -1,5 +1,5 @@
 import dom from "./runtime-dom.js";
-
+import {openTick,resetTick} from "./reactivity.js"
 //覆盖渲染
 export default function render(vnode, container) {
     let rel;
@@ -37,6 +37,12 @@ function patchVnode(v1, v2) {
             for (let child of v2.children) {
                 v2.children.push(renElement(child));
             }
+        }
+        else if (v1.children.length === 1 &&
+            v2.children.length === 1 &&
+            sameNode(v1.children[0], v2.children[0])
+        ) {
+            patchVnode(v1.children[0], v2.children[0]);
         }
         else {
             patchChildren(v1, v2);
@@ -101,17 +107,16 @@ function patchChildren(v1, v2) {
             newEndNode = c2[--newEndIdx];
         }
         else {
-            console.log(oldStartNode, newStartNode)
             break;
         }
     }
     let c3, c4;
     //这里需要相减一是因为等号上面会多处理一次，上标会多出来一
     if (--oldStartIdx < oldEndIdx) {
-        c3 = c1.slice(oldStartIdx+1, oldEndIdx+1);
+        c3 = c1.slice(oldStartIdx + 1, oldEndIdx + 1);
     }
     if (--newStartIdx < newEndIdx) {
-        c4 = c2.slice(newStartIdx+1, newEndIdx+1);
+        c4 = c2.slice(newStartIdx + 1, newEndIdx + 1);
     }
     if (!c3) { c3 = [] }
     if (!c4) { c4 = [] }
@@ -193,7 +198,7 @@ function renElement(vnode) {
         return renComponent(vnode, vnode.componentOptions);
     }
     //正常元素
-    let { tag, data, children } = vnode;
+    let { tag, data, children, key } = vnode;
     let rel = (vnode.element = document.createElement(tag));
     if (data) {
         setAttrs(rel, data, vnode["context"]);
@@ -201,14 +206,21 @@ function renElement(vnode) {
     if (children) {
         renChildren(rel, children);
     }
+    if (key) {
+        dom.setAttribute(ele, "key", key)
+    }
     vnode.element = rel;
     return rel;
 }
 function renComponent(vnode, option) {
     let { Ctor } = option;
+    let { key } = vnode;
     let node = Ctor.$vnode = Ctor._render();
     let ele = Ctor.$vnode.element = vnode.element = renElement(node);
     dom.setAttribute(ele, vnode.tag, "")
+    if (key) {
+        dom.setAttribute(ele, "key", key)
+    }
     return ele;
 }
 
@@ -247,7 +259,9 @@ function bindLisenter(rel, lisenters, self) {
             if (typeof lisenters[i] !== "function") {
                 throw new Error(`${lisenters[i]} 不是一个合法的函数，请检查！`)
             }
+            openTick();
             lisenters[i].apply(self, arguments);
+            resetTick();
         })
     }
 }

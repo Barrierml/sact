@@ -12,13 +12,13 @@
     <div id="root">
         <button @click="ww" :value="'qq'">{{qq}}</button>
         <button @click="sc" :value="'qq'">{{qq}}</button>
-        <button @click="show" :value="'qq'">显示</button>
+        <button @click="load =! load" :value="'qq'">显示</button>
         <test s-if="load" :text="qq" s-for="qq in ff" :key="qq"></test>
     </div>
     <script type="module">
         import Sact from "../src/sact.js"
         let test = Sact.component({
-            template: "<div><p>{{count}}</p><button @click='jiayi'>点我</button></div>",
+            template: "<div><p>{{props.text}}</p><p>{{count}}</p><button @click='jiayi'>点我</button></div>",
             data() {
                 return { count: 0 }
             },
@@ -34,13 +34,17 @@
                 qq: 123,
                 load: true,
                 ff: [1, 2, 3],
+                count:4,
             },
             method: {
                 ww() {
-                    this.data.ff.push("123")
+                    this.data.ff.push(this.data.count++)
                 },
                 sc() {
-                    this.data.ff.splice(1, 2)
+                    let temp = this.data.ff[0];
+                    this.data.ff[0] = this.data.ff[2];
+                    this.data.ff[2] = temp;
+                    
                 },
                 show() {
                     this.data.load = !this.data.load

@@ -47,11 +47,103 @@ function trigger(target, key) {
     let depRes = dep.get(target);
     if (depRes) {
         let sacts = depRes.get(key);
-        //列表这个可能有个小bug暂时直接使用map里面的第一个吧
-        if(sacts){
+        if (sacts) {
             for (let sact of sacts) {
-                sact.notify && sact.notify(key);
+                //将sact塞进队列,保证多次更改数据只会渲染一次
+                queueNotion(sact);
             }
         }
+    }
+}
+
+//下面是异步刷新
+//通过opentick开启队列缓冲，保证只刷新一次
+const queue = [];
+let waiting = false;
+let has = {};
+export function openTick() { //开启数据收集
+    waiting = true;
+}
+export function resetTick(){ //释放数据
+    waiting = true
+    nextTick(flushSchedulerQueue)
+}
+//将不同的sact放入队列
+function queueNotion(sact) {
+    let id = sact.id;
+    if (!has[id]){
+        has[id] = true;
+        queue.push(sact)
+    }
+    if (!waiting) {
+        resetTick();
+    }
+}
+//通知所有sact刷新
+function flushSchedulerQueue() {
+    let sact;
+    for (let index = 0; index < queue.length; index++) {
+        sact = queue[index]
+        sact.notify && sact.notify();
+    }
+
+    //清楚数据等待下次收集
+    queue.length = 0;
+    waiting = false;
+    has = {}
+}
+
+const callbacks = []
+let pending = false
+
+
+
+//使用nextTick 来进行异步操作
+function flushCallbacks() {
+    pending = false
+    const copies = callbacks.slice(0)
+    callbacks.length = 0
+    for (let i = 0; i < copies.length; i++) {
+        copies[i]()
+    }
+}
+let timerFunc
+if (typeof Promise !== 'undefined') {
+  const p = Promise.resolve()
+  timerFunc = () => {
+    p.then(flushCallbacks)
+  }
+} else if (!isIE && typeof MutationObserver !== 'undefined' && (
+  isNative(MutationObserver) ||
+  MutationObserver.toString() === '[object MutationObserverConstructor]'
+)) {
+  let counter = 1
+  const observer = new MutationObserver(flushCallbacks)
+  const textNode = document.createTextNode(String(counter))
+  observer.observe(textNode, {
+    characterData: true
+  })
+  timerFunc = () => {
+    counter = (counter + 1) % 2
+    textNode.data = String(counter)
+  }
+} else if (typeof setImmediate !== 'undefined' && isNative(setImmediate)) {
+  timerFunc = () => {
+    setImmediate(flushCallbacks)
+  }
+} else {
+  timerFunc = () => {
+    setTimeout(flushCallbacks, 0)
+  }
+}
+export function nextTick(cb, ctx) {
+    callbacks.push(() => {
+        if (cb) {
+            cb.call(ctx)
+        }
+    })
+    if (!pending) {
+        pending = true
+        timerFunc()
     }
 }

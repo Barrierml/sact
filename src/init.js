@@ -53,10 +53,7 @@ function initComponent(sact, options) {
     let { isComponent, component } = options;
     if (isComponent) { //自身为组件时
         sact.isComponent = true;
-        sact.cid = Number.parseInt(Math.random() * 100);
-
     }
-
     if (isObj(component)) { //使用组件时,将组件添加到环境中
         sact.componentList = [];
         for (let con of Reflect.ownKeys(component)) {
@@ -64,6 +61,8 @@ function initComponent(sact, options) {
         }
         sact.components = component;
     }
+    //每个sact赋予一个新的cid
+    sact.cid = Number.parseInt(Math.random() * 100);
 }
 
 //初始化渲染功能
