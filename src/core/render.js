@@ -1,6 +1,5 @@
 import dom from "../api/runtime-dom.js";
 import { openTick, resetTick } from "./reactivity.js"
-import raise from "./vnode.js"
 import { isObj } from "../tools/untils.js"
 //覆盖渲染
 export default function render(vnode, container) {
@@ -26,32 +25,41 @@ function patchVnode(v1, v2) {
         }
     }
     else if (v1.componentOptions && v2.componentOptions) {
-        patchCompent(v1, v2);
+        if (v1.isAbstract) {
+            patchAbsCompent(v1, v2)
+        }
+        else {
+            patchCompent(v1, v2);
+        }
     }
     else {
         patchAttrs(v1, v2);
-        if (v1.children && !v2.children) {
-            for (let child of v1.children) {
-                dom.remove(child.element);
-            }
-        }
-        else if (!v1.children && v2.children) {
-            for (let child of v2.children) {
-                v2.children.push(renElement(child));
-            }
-        }
-        else if (v1.children?.length === 1 &&
-            v2.children?.length === 1 &&
-            sameNode(v1.children[0], v2.children[0])
-        ) {
-            patchVnode(v1.children[0], v2.children[0]);
-        }
-        else if(v1.children && v2.children) {
-            patchChildren(v1, v2);
-        }
+        prePatchChildren(v1.children, v2.children, v1.element);
     }
     v2.element = v1.element;
 }
+
+
+function prePatchChildren(c1, c2, parent) {
+    if (c1?.length > 0 && c2?.length === 0) {
+        c1.forEach((child) => {
+            dom.remove(child.element);
+        })
+    }
+    else if (c1?.length === 0 && c2?.length > 0) {
+        renChildren(parent,c2)
+    }
+    else if (c1?.length === 1 &&
+        c2?.length === 1 &&
+        sameNode(c1[0], c2[0])
+    ) {
+        patchVnode(c1[0], c2[0]);
+    }
+    else if (c1 && c2) {
+        patchChildren(parent, c1, c2);
+    }
+}
+
 
 //更新文字
 function patchText(vnode, rel) {
@@ -60,16 +68,25 @@ function patchText(vnode, rel) {
 
 //更新组件
 function patchCompent(v1, v2) {
-    let p1 = v1.data;
-    let p2 = v2.data;
     let Ctor1 = v1.componentOptions.Ctor;
-    if (p1, p2) {
-        //props不同则调用ctor进行自我更新
-        Ctor1.patch();
-        v2.componentOptions.Ctor = Ctor1;
-    }
+    //更新插槽
+    Ctor1.$slot = renSlot(v2.componentOptions.children);
+    Ctor1.patch();
+    v2.componentOptions.Ctor = Ctor1;
 }
 
+//更新抽象组件 只更新子元素
+function patchAbsCompent(v1, v2) {
+    let Ctor1 = v1.componentOptions.Ctor;
+    v2.componentOptions.Ctor = Ctor1;
+    //这里需要重新赋值
+    v2.isAbstract = true;
+    //因为没有进行patch所以需要单独调用钩子函数
+    Ctor1.callHooks("beforeUpdate");
+    prePatchChildren(Ctor1.$vnode, v2.componentOptions.children, v1.parent.element)
+    Ctor1.$vnode = v2.componentOptions.children;
+    Ctor1.callHooks("updated");
+}
 //更新属性
 function patchAttrs(v1, v2) {
     let d1 = v1.data;
@@ -85,10 +102,7 @@ function patchAttrs(v1, v2) {
 }
 
 //diff算法核心 比较子数组
-function patchChildren(v1, v2) {
-    let parentEle = v1.element;
-    let c1 = v1.children;
-    let c2 = v2.children;
+function patchChildren(parentEle, c1, c2) {
     let oldStartIdx = 0;
     let newStartIdx = 0;
     let oldEndIdx = c1.length - 1;
@@ -132,8 +146,8 @@ function patchChildren(v1, v2) {
                 //找到就移动元素
                 dom.insert(oc.element, parentEle, dom.next(achor.element));
                 //如果是组件还需要更新核心
-                if(isComponent(nc,oc)){
-                    nc.componentOptions.Ctor = oc.componentOptions.Ctor;
+                if (isComponent(nc, oc)) {
+                    nc.componentOptions = oc.componentOptions;
                 }
                 nc.element = oc.element;
                 oc.patched = true;
@@ -152,7 +166,13 @@ function patchChildren(v1, v2) {
     //删除未处理到的dom
     for (let oc of c3) {
         if (!oc.patched) {
+            if (oc.componentOptions) {
+                oc.componentOptions.Ctor.callHooks("beforDestory");
+            }
             dom.remove(oc.element);
+            if (oc.componentOptions) {
+                oc.componentOptions.Ctor.callHooks("destroyed");
+            }
         }
     }
 }
@@ -161,7 +181,7 @@ function patchChildren(v1, v2) {
 function sameNode(v1, v2) {
     return (v1?.tag === v2?.tag && v1?.key === v2?.key)
 }
-function isComponent(v1,v2){
+function isComponent(v1, v2) {
     return (v1.componentOptions && v2.componentOptions)
 }
 
@@ -242,18 +262,25 @@ function renElement(vnode) {
     return rel;
 }
 function renComponent(vnode, option) {
-    let { Ctor,children } = option;
+    let { Ctor, children } = option;
     let { key, data } = vnode;
     //渲染的时候再实例化Ctor;
     //这样可以减少很大一部分的内存占用
     Ctor = option.Ctor = Ctor();
+    //传入props和插槽
     parsePropsData(Ctor, data);
+    //处理抽象组件
+    if (Ctor.isAbstract) {
+        vnode.isAbstract = true;
+        return renAbstractCompoent(Ctor, children);
+    }
     Ctor.$slot = renSlot(children);
-    //包装组件的渲染方法的接口
-    Ctor._render = () => raise(Ctor.$createVnode, Ctor);
     //开始渲染
-    let node = Ctor.$vnode = Ctor._render();
-    let ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
+    let node, ele;
+    node = Ctor.$vnode = Ctor._render();
+    Ctor.callHooks("beforeMount");
+    ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
+    Ctor.callHooks("mounted");
     dom.setAttribute(ele, vnode.tag, "")
     if (key) {
         dom.setAttribute(ele, "key", key)
@@ -261,13 +288,26 @@ function renComponent(vnode, option) {
     return ele;
 }
 
+
+//生成抽象组件 本身不做任何渲染,只渲染组件内的
+function renAbstractCompoent(Ctor, children) {
+    let res = [];
+    Ctor.$vnode = children;
+    Ctor.callHooks("beforeMount");
+    for (let child of children) {
+        res.push(renElement(child));
+    }
+    Ctor.callHooks("mounted");
+    return res;
+}
+
 //生成插槽
-function renSlot(children){
+function renSlot(children) {
     let res = {};
-    if(Array.isArray(children)){
+    if (Array.isArray(children)) {
         res["default"] = children;
     }
-    else{
+    else {
         return undefined;
     }
     return res;
@@ -293,7 +333,15 @@ function parsePropsData(Ctor, data) {
 function renChildren(rel, children) {
     if (Array.isArray(children)) {
         for (let child of children) {
-            rel.appendChild(renElement(child));
+            let res = renElement(child);
+            if (Array.isArray(res)) {
+                res.map((v) => {
+                    rel.appendChild(v);
+                })
+            }
+            else {
+                rel.appendChild(res);
+            }
         }
     }
 }

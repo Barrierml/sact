@@ -21,7 +21,7 @@ function genElement(ast) {
         return genIf(ast, res);
     }
     else if (ast.tagName === "template") { // 解析template组件
-        return genTemplate(ast);
+        return genChildren(ast);
     }
     else {
         return `_c_('${ast.tagName}', ${genData(ast)}, ${genChildren(ast)},${zid++})`;

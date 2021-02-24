@@ -14,13 +14,13 @@ class Vnode {
         this.data = b
         this.componentOptions = d
 
-        // this.parent = undefined
+        this.parent = undefined
         this.text = istext ? a : undefined
         this.key = b?.key;
         this.element = undefined
 
         this.zid = zid
-        this.children = genVdomChildren(c, vm)
+        this.children = genVdomChildren(c, vm, this)
     }
 }
 
@@ -45,21 +45,21 @@ function createComponent(Ctor, data, context, children, tag, zid) {
         data, undefined, {
         Ctor: Ctor,
         tag: tag,
-        children: children,
+        children: genVdomChildren(children),
     }, false, zid);
     return vnode
 }
 function createSolt(vm, data, children) {
-    if(vm.$slot){
+    if (vm.$slot) {
         let slotName = data?.attrs?.name
-        if(slotName){
+        if (slotName) {
             return vm.$slot[slotName] || null;
         }
-        else{
+        else {
             return vm.$slot["default"];
         }
     }
-    else{
+    else {
         return children
     }
 }
@@ -84,12 +84,12 @@ function createFor(iterater, fn) {
     return res
 }
 //合并生成的列表
-function genVdomChildren(list, vm) {
+function genVdomChildren(list, vm, parent) {
     let res = [];
     if (list) {
         for (let i of list) {
             if (Array.isArray(i)) {
-                res = res.concat(genVdomChildren(i));
+                res = res.concat(genVdomChildren(i,vm,parent));
             }
             else if (typeof i === "string") {
                 res.push(new Vnode(vm, i, undefined, undefined, undefined, true))
@@ -98,6 +98,6 @@ function genVdomChildren(list, vm) {
                 res.push(i);
             }
         }
-        return res;
+        return res.map((v)=>{v.parent = parent;return v;});
     }
 }

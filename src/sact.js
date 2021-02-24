@@ -17,18 +17,26 @@ export default class Sact {
 
   render() {
     this.$vnode = this._render();
+    this.callHooks("beforeMount");
     render(this.$vnode, this.$ele);
+    this.callHooks("mounted");
   }
 
   patch() {
     let oldVnode = this.$vnode;
     this.$vnode = this._render();
+    this.callHooks("beforeUpdate");
     _patch(oldVnode, this.$vnode);
+    this.callHooks("update");
   }
 
 
   notify() {
     this.patch();
+  }
+
+  destory(){
+    this.callHooks("beforeDestory");
   }
 
   static component(options) {

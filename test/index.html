@@ -9,41 +9,39 @@
 </head>
 
 <body>
+
     <div id="root">
-        <h2>{{qq}}</h2>
-        <button @click="sc" :value="'qq'">{{qq}}</button>
+
         <button @click="load =! load" :value="'qq'">显示</button>
-        <test s-if="load" s-for="qq in ff" :pic="meishi" :key="qq">
-            <p>123</p>
-        </test>
-        <test><h1>qqqq</h1></test>
-        <test></test>
-        <p s-if="!load">啊，消失了</p>
+        <p>123</p>
+        <keep-alive>
+            <p s-if="load">{{qq}}</p>
+        </keep-alive>
     </div>
     <script type="module">
         import Sact from "../src/sact.js"
+        import keepAlive from "../src/component/keep-alive.js"
         let test = Sact.component({
             template: `<div>
-                <p>{{props.text}}</p>
-                <slot>123</slot>
+                <slot>哈哈哈</slot>
                 <input @input="ww"/>
                 <button @click='jiayi'>点我</button>
             </div>`,
             data() {
-                return { count: 0,input:"" }
+                return { count: 0, input: "" }
             },
-            props:{
-                text:"哈哈哈",
+            props: {
+                text: "哈哈哈",
             },
             method: {
                 jiayi() {
                     this.data.count++;
                     this.props.pic(this.data.input);
                 },
-                ww(e){
+                ww(e) {
                     this.data.input = e.target.value;
                 }
-            }
+            },
         })
         window.qq = new Sact({
             ele: "#root",
@@ -51,20 +49,20 @@
                 qq: 123,
                 load: true,
                 ff: [1, 2, 3],
-                count:4,
+                count: 4,
             },
             method: {
                 ww() {
                     this.data.ff.push(this.data.count++)
                 },
-                meishi(k){
+                meishi(k) {
                     this.data.qq += k;
                 },
                 sc() {
                     let temp = this.data.ff[0];
                     this.data.ff[0] = this.data.ff[2];
                     this.data.ff[2] = temp;
-                    
+
                 },
                 show() {
                     this.data.load = !this.data.load
@@ -72,6 +70,7 @@
             },
             component: {
                 test,
+                "keep-alive": keepAlive,
             }
         })
     </script>
