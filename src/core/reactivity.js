@@ -1,10 +1,9 @@
-import Sact from "./sact.js";
-import { isObj } from "./untils.js";
+import { isObj } from "../tools/untils.js";
 /**
  * 
- * @param {Sact} sact 要绑定的sact实例
- * @param {object} data 要响应式化数据
- * @param {object} options 配置
+ * @param {} sact 要绑定的sact实例
+ * @param {} data 要响应式化数据
+ * @param {} options 配置
  * 当数据变化的时候自动通知sact的notify()函数
  */
 
@@ -57,7 +56,7 @@ function trigger(target, key) {
 }
 
 //下面是异步刷新
-//通过opentick开启队列缓冲，保证只刷新一次
+//通过opentick开启队列缓冲，resetTick来清空队列
 const queue = [];
 let waiting = false;
 let has = {};
@@ -70,7 +69,7 @@ export function resetTick(){ //释放数据
 }
 //将不同的sact放入队列
 function queueNotion(sact) {
-    let id = sact.id;
+    let id = sact.cid;
     if (!has[id]){
         has[id] = true;
         queue.push(sact)
@@ -83,7 +82,7 @@ function queueNotion(sact) {
 function flushSchedulerQueue() {
     let sact;
     for (let index = 0; index < queue.length; index++) {
-        sact = queue[index]
+        sact = queue[index];
         sact.notify && sact.notify();
     }
 

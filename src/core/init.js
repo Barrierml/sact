@@ -1,4 +1,4 @@
-import { isObj } from "./untils.js";
+import { isObj } from "../tools/untils.js";
 import Parse from "./Parser.js"
 import Generate from "./generate.js"
 import { reactivate } from "./reactivity.js";

@@ -1,4 +1,3 @@
-import { extend, isObj } from "./untils.js";
 
 //生成函数语法对应的vnode
 export default function raise(fn, vm) {
@@ -38,9 +37,6 @@ function createVnode(vm, a, b, c, zid) {
 }
 
 function createComponent(Ctor, data, context, children, tag, zid) {
-    Ctor = Ctor();
-    //留下组件的渲染方法的接口
-    Ctor._render = () => raise(Ctor.$createVnode, extend(Ctor, { props: parsePropsData(data) }));
     let vnode = new Vnode(context,
         ("sact-component-" + (zid) + "-" + tag),
         data, undefined, {
@@ -49,19 +45,6 @@ function createComponent(Ctor, data, context, children, tag, zid) {
         children: children,
     },false,zid);
     return vnode
-}
-
-function parsePropsData(data) {
-    let res = {};
-    let { attrs, on, props } = data;
-    for (let i of [attrs, on, props]) {
-        if (isObj(i)) {
-            for (let j of Reflect.ownKeys(i)) {
-                res[j] = attrs[j];
-            }
-        }
-    }
-    return res;
 }
 
 function createFor(iterater, fn) {

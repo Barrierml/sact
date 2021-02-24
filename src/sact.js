@@ -1,8 +1,8 @@
 //自制的简易MVVM框架(主要借鉴的vue)
 
 
-import initAll from "./init.js";
-import render, { _patch } from "./render.js";
+import initAll from "./core/init.js";
+import render, { _patch } from "./core/render.js";
 
 
 export default class Sact {

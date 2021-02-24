@@ -1,5 +1,5 @@
 //将ast语法树转化成语法
-import { getAndRemoveAttr, getDynamicName, AttrsTag } from "./untils.js"
+import { getAndRemoveAttr, getDynamicName, AttrsTag } from "../tools/untils.js"
 //给每个元素附上索引
 let zid = 0;
 const simplePathRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/

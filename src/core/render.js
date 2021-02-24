@@ -1,5 +1,7 @@
-import dom from "./runtime-dom.js";
-import {openTick,resetTick} from "./reactivity.js"
+import dom from "../api/runtime-dom.js";
+import { openTick, resetTick } from "./reactivity.js"
+import raise from "./vnode.js"
+import { isObj } from "../tools/untils.js"
 //覆盖渲染
 export default function render(vnode, container) {
     let rel;
@@ -38,13 +40,13 @@ function patchVnode(v1, v2) {
                 v2.children.push(renElement(child));
             }
         }
-        else if (v1.children.length === 1 &&
-            v2.children.length === 1 &&
+        else if (v1.children?.length === 1 &&
+            v2.children?.length === 1 &&
             sameNode(v1.children[0], v2.children[0])
         ) {
             patchVnode(v1.children[0], v2.children[0]);
         }
-        else {
+        else if(v1.children && v2.children) {
             patchChildren(v1, v2);
         }
     }
@@ -55,18 +57,19 @@ function patchVnode(v1, v2) {
 function patchText(vnode, rel) {
     rel.textContent = vnode;
 }
+
 //更新组件
 function patchCompent(v1, v2) {
     let p1 = v1.data;
     let p2 = v2.data;
-    for (let att of Reflect.ownKeys(p2)) {
-        if (p1[att] !== p2[att]) {
-            let rel = renComponent(v2, v2.componentOptions);
-            dom.replace(v2.element, rel);
-            return
-        }
+    let Ctor1 = v1.componentOptions.Ctor;
+    if (p1, p2) {
+        //props不同则调用ctor进行自我更新
+        Ctor1.patch();
+        v2.componentOptions.Ctor = Ctor1;
     }
 }
+
 //更新属性
 function patchAttrs(v1, v2) {
     let d1 = v1.data;
@@ -128,6 +131,10 @@ function patchChildren(v1, v2) {
             if (!oc.patched && sameNode(nc, oc)) {
                 //找到就移动元素
                 dom.insert(oc.element, parentEle, dom.next(achor.element));
+                //如果是组件还需要更新核心
+                if(isComponent(nc,oc)){
+                    nc.componentOptions.Ctor = oc.componentOptions.Ctor;
+                }
                 nc.element = oc.element;
                 oc.patched = true;
                 achor = nc;
@@ -142,7 +149,7 @@ function patchChildren(v1, v2) {
             achor = nc;
         }
     }
-    //删除没有用到的dom
+    //删除未处理到的dom
     for (let oc of c3) {
         if (!oc.patched) {
             dom.remove(oc.element);
@@ -152,7 +159,29 @@ function patchChildren(v1, v2) {
 
 
 function sameNode(v1, v2) {
-    return (v1.tag === v2.tag && v1.key === v2.key)
+    return (v1?.tag === v2?.tag && v1?.key === v2?.key)
+}
+function isComponent(v1,v2){
+    return (v1.componentOptions && v2.componentOptions)
+}
+
+//判断
+function sameData(d1, d2, key) {
+    if (d1 && d2) {
+        for (let newAttr of Reflect.ownKeys(d2)) {
+            if (!sameAttrs(d1, d2, newAttr)) {
+                if (key === "attrs") {
+                    dom.setAttribute(rel, newAttr, na[newAttr]);
+                }
+                else {
+                    rel[newAttr] = na[newAttr];
+                }
+                hasText.push(newAttr);
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 //比较属性并更改
@@ -214,14 +243,39 @@ function renElement(vnode) {
 }
 function renComponent(vnode, option) {
     let { Ctor } = option;
-    let { key } = vnode;
+    let { key, data } = vnode;
+    //渲染的时候再实例化Ctor;
+    //这样可以减少很大一部分的内存占用
+    Ctor = option.Ctor = Ctor();
+    parsePropsData(Ctor, data);
+    //包装组件的渲染方法的接口
+    Ctor._render = () => raise(Ctor.$createVnode, Ctor);
+    //开始渲染
     let node = Ctor.$vnode = Ctor._render();
-    let ele = Ctor.$vnode.element = vnode.element = renElement(node);
+    let ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
     dom.setAttribute(ele, vnode.tag, "")
     if (key) {
         dom.setAttribute(ele, "key", key)
     }
     return ele;
+}
+
+
+//传入父组件的参数
+function parsePropsData(Ctor, data) {
+    let Cprops = Ctor.props;
+    if (!Cprops) {
+        Ctor.props = Cprops = {};
+    }
+    let { attrs, on, props } = data;
+    for (let i of [attrs, on, props]) {
+        if (isObj(i)) {
+            for (let j of Reflect.ownKeys(i)) {
+                Cprops[j] = attrs[j];
+            }
+        }
+    }
+    return Cprops;
 }
 
 function renChildren(rel, children) {
@@ -257,7 +311,7 @@ function bindLisenter(rel, lisenters, self) {
     for (let i of Reflect.ownKeys(lisenters)) {
         rel.addEventListener(i, function () {
             if (typeof lisenters[i] !== "function") {
-                throw new Error(`${lisenters[i]} 不是一个合法的函数，请检查！`)
+                throw new Error(`${i} 不是一个合法的函数，请检查！`)
             }
             openTick();
             lisenters[i].apply(self, arguments);
