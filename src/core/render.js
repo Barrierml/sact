@@ -242,12 +242,13 @@ function renElement(vnode) {
     return rel;
 }
 function renComponent(vnode, option) {
-    let { Ctor } = option;
+    let { Ctor,children } = option;
     let { key, data } = vnode;
     //渲染的时候再实例化Ctor;
     //这样可以减少很大一部分的内存占用
     Ctor = option.Ctor = Ctor();
     parsePropsData(Ctor, data);
+    Ctor.$slot = renSlot(children);
     //包装组件的渲染方法的接口
     Ctor._render = () => raise(Ctor.$createVnode, Ctor);
     //开始渲染
@@ -260,6 +261,17 @@ function renComponent(vnode, option) {
     return ele;
 }
 
+//生成插槽
+function renSlot(children){
+    let res = {};
+    if(Array.isArray(children)){
+        res["default"] = children;
+    }
+    else{
+        return undefined;
+    }
+    return res;
+}
 
 //传入父组件的参数
 function parsePropsData(Ctor, data) {

@@ -13,7 +13,11 @@
         <h2>{{qq}}</h2>
         <button @click="sc" :value="'qq'">{{qq}}</button>
         <button @click="load =! load" :value="'qq'">显示</button>
-        <test s-if="load" s-for="qq in ff" :pic="meishi" :key="qq"></test>
+        <test s-if="load" s-for="qq in ff" :pic="meishi" :key="qq">
+            <p>123</p>
+        </test>
+        <test><h1>qqqq</h1></test>
+        <test></test>
         <p s-if="!load">啊，消失了</p>
     </div>
     <script type="module">
@@ -21,7 +25,7 @@
         let test = Sact.component({
             template: `<div>
                 <p>{{props.text}}</p>
-                <p>{{count}}</p>
+                <slot>123</slot>
                 <input @input="ww"/>
                 <button @click='jiayi'>点我</button>
             </div>`,

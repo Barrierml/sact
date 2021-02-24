@@ -6,12 +6,12 @@ import raise from "./vnode.js";
 
 export default function initAll(sact, options) {
     sact.$optinons = options;
+    initProps(sact, options);
     initElement(sact, options);
-    initData(sact, options);
     initMethod(sact, options);
+    initData(sact, options);
     initComponent(sact, options);
     initRender(sact, options);
-    initProps(sact, options);
 }
 
 //初始化对象
@@ -29,7 +29,7 @@ function initElement(sact, options) {
 function initData(sact, options) {
     let data = options.data;
     if(options.data && typeof options.data === "function"){
-        data = data();
+        data = data.apply(sact);
     }
     sact.data = reactivate(sact, data || {});
 }
@@ -80,7 +80,10 @@ function initRender(sact, options) {
 //初始化继承
 function initProps(sact, options) {
     let { props } = options;
-    if (props) {
+    if(typeof props === "function"){
+        sact.props = props();
+    }
+    else if (props) {
         sact.props = props;
     }
 }
