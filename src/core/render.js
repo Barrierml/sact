@@ -140,14 +140,19 @@ function patchChildren(parentEle, c1, c2) {
     }
     if (!c3) { c3 = [] }
     if (!c4) { c4 = [] }
-    //锚点是被截取列表的前一个元素
-    let achor = c1[oldStartIdx];
+    let achor;
+    if(oldStartIdx === -1){//说明需要添加的元素在头部
+        achor = c1[oldEndIdx + 1].element;//选取截取列表的后一个元素
+    }
+    else{
+        achor = dom.next(c1[oldStartIdx].element); //正常情况锚点选取被截取列表的前一个元素
+    }
     for (let nc of c4) {
         let finded = false;
         for (let oc of c3) {
             if (!oc.patched && sameNode(nc, oc)) {
                 //找到就移动元素
-                dom.insert(oc.element, parentEle, dom.next(achor.element));
+                dom.insert(oc.element, parentEle, achor);
                 patchVnode(oc,nc);
                 oc.patched = true;
                 achor = nc;
@@ -158,7 +163,7 @@ function patchChildren(parentEle, c1, c2) {
         //没有找到就新建插入
         if (!finded) {
             let rel = renElement(nc)
-            dom.insert(rel, parentEle, dom.next(achor?.element));
+            dom.insert(rel, parentEle, achor);
             achor = nc;
         }
     }
