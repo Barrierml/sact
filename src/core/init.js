@@ -2,7 +2,7 @@ import { extend, isObj } from "../tools/untils.js";
 import Parse from "./Parser.js";
 import Generate from "./generate.js";
 import { reactivate } from "./reactivity.js";
-import raise from "./vnode.js";
+import { createVnode, createFor } from "./vnode.js";
 
 export default function initAll(sact, options) {
     sact.$options = options;
@@ -33,10 +33,15 @@ function initElement(sact) {
 function initData(sact) {
     const options = sact.$options;
     let data = options.data;
-    if(options.data && typeof options.data === "function"){
+    if (options.data && typeof options.data === "function") {
         data = data.apply(sact);
     }
-    sact.data = reactivate(sact, data || {});
+    if (options.reactive === false) {
+        sact.data = data;
+    }
+    else {
+        sact.data = reactivate(sact, data || {});
+    }
 }
 
 //初始化方法
@@ -51,13 +56,15 @@ function initMethod(sact) {
             sact[funName] = options.method[funName].bind(sact);
         };
     }
+    sact._c_ = (a, b, c, zid) => createVnode(sact, a, b, c, zid);
+    sact._f_ = (i, f) => createFor(i, f)
 }
 
 
 //初始化组件功能
 function initComponent(sact) {
     const options = sact.$options;
-    let { isComponent, component,isAbstract } = options;
+    let { isComponent, component, isAbstract } = options;
     if (isComponent) { //自身为组件时
         sact.isComponent = true;
         sact.isAbstract = isAbstract; //抽象组件
@@ -77,15 +84,20 @@ function initComponent(sact) {
 //初始化渲染功能
 function initRender(sact) {
     const options = sact.$options;
-    if(!sact.isAbstract){
-        sact.$createVnode = Generate(Parse(sact.$template))
-        sact._render = ()=>raise(sact.$createVnode,sact);
+
+    if (sact.isAbstract === true) {
+        sact._render = () => null
     }
+    else {
+        sact.$createVnode = Generate(Parse(sact.$template))
+        sact._render = () => sact.$createVnode.apply(sact);
+    }
+
     //当sact为组件时的渲染方法在vnode里面生成
     //用户可以自定义render函数，手动修改vnode来渲染,不过随意修改vnode会造成patch错误，请小心使用
-    let {render} = options;
-    if(render && typeof render === "function"){
-        sact.renderHook = render;
+    let { render } = options;
+    if (render && typeof render === "function") {
+        sact._render = (props) => render.apply(sact,[sact._c_, props]);
     }
 }
 
@@ -94,7 +106,7 @@ function initRender(sact) {
 function initProps(sact) {
     const options = sact.$options;
     let { props } = options;
-    if(typeof props === "function"){
+    if (typeof props === "function") {
         sact.props = props();
     }
     else if (props) {
@@ -103,7 +115,7 @@ function initProps(sact) {
 }
 
 //初始化生命周期
-function initWhen(sact){
+function initWhen(sact) {
     /**
      * 目前支持的周期函数
      * beforeCreate 刚刚实例化 data，method都还无法调用
@@ -116,7 +128,7 @@ function initWhen(sact){
      * destroyed （仅限组件）删除后，已经删除完毕，数据均已解绑
      */
     const opts = sact.$options;
-    sact.callHooks = function(fnName){
+    sact.callHooks = function (fnName) {
         let fn = opts[fnName];
         fn && typeof fn === "function" && fn.apply(sact);
     }

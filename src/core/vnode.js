@@ -1,10 +1,4 @@
 
-//生成函数语法对应的vnode
-export default function raise(fn, vm) {
-    vm._c_ = (a, b, c, zid) => createVnode(vm, a, b, c, zid);
-    vm._f_ = (i, f) => createFor(i, f)
-    return fn.apply(vm);
-}
 
 class Vnode {
     constructor(vm, a, b, c, d, istext, zid) {
@@ -22,11 +16,19 @@ class Vnode {
         this.zid = zid
         this.children = genVdomChildren(c, vm, this)
     }
+
+    getParentEle(){
+        let parent = this.parent;
+        while(parent && !parent.element){
+            parent = parent.parent;
+        }
+        return parent?.element;
+    }
 }
 
 
 
-function createVnode(vm, a, b, c, zid) {
+export function createVnode(vm, a, b, c, zid) {
     const { componentList, components } = vm;
     if (componentList && componentList.includes(a)) { //当a是自定义组件时
         return createComponent(components[a], b, vm, c, a, zid);
@@ -65,7 +67,7 @@ function createSolt(vm, data, children) {
 }
 
 
-function createFor(iterater, fn) {
+export function createFor(iterater, fn) {
     let res = [];
     if (Array.isArray(iterater)) {
         res = iterater.map(fn);

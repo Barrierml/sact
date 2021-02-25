@@ -13,10 +13,12 @@
     <div id="root">
 
         <button @click="load =! load" :value="'qq'">显示</button>
-        <p>123</p>
+        <button @click="meishi">加上去</button>
+        <p>{{qq}}</p>
         <keep-alive>
-            <p s-if="load">{{qq}}</p>
+            <input s-if="load" />
         </keep-alive>
+        <test s-if="load">{{qq}}</test>
     </div>
     <script type="module">
         import Sact from "../src/sact.js"
@@ -36,7 +38,6 @@
             method: {
                 jiayi() {
                     this.data.count++;
-                    this.props.pic(this.data.input);
                 },
                 ww(e) {
                     this.data.input = e.target.value;
@@ -56,13 +57,7 @@
                     this.data.ff.push(this.data.count++)
                 },
                 meishi(k) {
-                    this.data.qq += k;
-                },
-                sc() {
-                    let temp = this.data.ff[0];
-                    this.data.ff[0] = this.data.ff[2];
-                    this.data.ff[2] = temp;
-
+                    this.data.qq += "哈哈哈";
                 },
                 show() {
                     this.data.load = !this.data.load

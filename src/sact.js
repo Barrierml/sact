@@ -3,6 +3,7 @@
 
 import initAll from "./core/init.js";
 import render, { _patch } from "./core/render.js";
+import {clearDep} from "./core/reactivity.js"
 
 
 export default class Sact {
@@ -22,9 +23,12 @@ export default class Sact {
     this.callHooks("mounted");
   }
 
-  patch() {
+  patch(){
     let oldVnode = this.$vnode;
-    this.$vnode = this._render();
+    this.$vnode = this._render(this.props);
+    if(this.$vnode){
+      this.$vnode.warpSact = this;
+    }
     this.callHooks("beforeUpdate");
     _patch(oldVnode, this.$vnode);
     this.callHooks("update");
@@ -37,6 +41,7 @@ export default class Sact {
 
   destory(){
     this.callHooks("beforeDestory");
+    clearDep(this);
   }
 
   static component(options) {

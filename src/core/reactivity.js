@@ -55,6 +55,16 @@ function trigger(target, key) {
     }
 }
 
+export function clearDep(sact){
+    for(let id of Reflect.ownKeys(dep)){
+        for(let key of Reflect.ownKeys(id)){
+            if(id[key].has(sact)){
+                id[key].delete(sact);
+            }
+        }
+    }
+}
+
 //下面是异步刷新
 //通过opentick开启队列缓冲，resetTick来清空队列
 const queue = [];

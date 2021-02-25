@@ -1,20 +1,38 @@
 import dom from "../api/runtime-dom.js";
 import { openTick, resetTick } from "./reactivity.js"
 import { isObj } from "../tools/untils.js"
-//覆盖渲染
+
+
+
 export default function render(vnode, container) {
-    let rel;
-    rel = renElement(vnode);
-    dom.replace(container, rel);
+    if(container){ //覆盖渲染
+        let rel;
+        rel = renElement(vnode);
+        dom.replace(container, rel);
+    }
+    else{ //出现这种情况只能是自定义render之前是空，现在有渲染结果了
+        let warp = vnode.warpSact.wrapVnode;
+        let parentEle = warp.getParentEle();
+        let rel = vnode.element || renElement(vnode);
+        let index = warp.parent.children.indexOf(warp) - 1;
+        let achor = warp.parent.children[index].element;
+        dom.insert(rel,parentEle,dom.next(achor));
+    }
 }
 
 
 export function _patch(v1, v2) {
-    if (sameNode(v1, v2)) {
+    if(v1 === v2){
+        return;
+    }
+    else if(v1 && !v2){
+        destroryVnode(v1);
+    }
+    else if (sameNode(v1, v2)) {
         patchVnode(v1, v2);
     }
     else {
-        render(v2, v1.element);
+        render(v2, v1?.element);
     }
 }
 
@@ -25,12 +43,7 @@ function patchVnode(v1, v2) {
         }
     }
     else if (v1.componentOptions && v2.componentOptions) {
-        if (v1.isAbstract) {
-            patchAbsCompent(v1, v2)
-        }
-        else {
-            patchCompent(v1, v2);
-        }
+        patchCompent(v1, v2);
     }
     else {
         patchAttrs(v1, v2);
@@ -41,13 +54,13 @@ function patchVnode(v1, v2) {
 
 
 function prePatchChildren(c1, c2, parent) {
-    if (c1?.length > 0 && c2?.length === 0) {
+    if ((c1?.length > 0 && c2?.length === 0)) {
         c1.forEach((child) => {
-            dom.remove(child.element);
+            destroryVnode(child)
         })
     }
-    else if (c1?.length === 0 && c2?.length > 0) {
-        renChildren(parent,c2)
+    else if ((c1?.length === 0 && c2?.length > 0)) {
+        renChildren(parent, c2)
     }
     else if (c1?.length === 1 &&
         c2?.length === 1 &&
@@ -69,23 +82,10 @@ function patchText(vnode, rel) {
 //更新组件
 function patchCompent(v1, v2) {
     let Ctor1 = v1.componentOptions.Ctor;
-    //更新插槽
     Ctor1.$slot = renSlot(v2.componentOptions.children);
+    Ctor1.props = parsePropsData(Ctor1,v2.data);
     Ctor1.patch();
     v2.componentOptions.Ctor = Ctor1;
-}
-
-//更新抽象组件 只更新子元素
-function patchAbsCompent(v1, v2) {
-    let Ctor1 = v1.componentOptions.Ctor;
-    v2.componentOptions.Ctor = Ctor1;
-    //这里需要重新赋值
-    v2.isAbstract = true;
-    //因为没有进行patch所以需要单独调用钩子函数
-    Ctor1.callHooks("beforeUpdate");
-    prePatchChildren(Ctor1.$vnode, v2.componentOptions.children, v1.parent.element)
-    Ctor1.$vnode = v2.componentOptions.children;
-    Ctor1.callHooks("updated");
 }
 //更新属性
 function patchAttrs(v1, v2) {
@@ -166,13 +166,7 @@ function patchChildren(parentEle, c1, c2) {
     //删除未处理到的dom
     for (let oc of c3) {
         if (!oc.patched) {
-            if (oc.componentOptions) {
-                oc.componentOptions.Ctor.callHooks("beforDestory");
-            }
-            dom.remove(oc.element);
-            if (oc.componentOptions) {
-                oc.componentOptions.Ctor.callHooks("destroyed");
-            }
+            destroryVnode(oc)
         }
     }
 }
@@ -267,24 +261,22 @@ function renComponent(vnode, option) {
     //渲染的时候再实例化Ctor;
     //这样可以减少很大一部分的内存占用
     Ctor = option.Ctor = Ctor();
+    Ctor.wrapVnode = vnode;
     //传入props和插槽
-    parsePropsData(Ctor, data);
-    //处理抽象组件
-    if (Ctor.isAbstract) {
-        vnode.isAbstract = true;
-        return renAbstractCompoent(Ctor, children);
-    }
+    let props = parsePropsData(Ctor, data);
     Ctor.$slot = renSlot(children);
     //开始渲染
-    let node, ele;
-    node = Ctor.$vnode = Ctor._render();
+    let ele = null;
+    let node = Ctor.$vnode = Ctor._render(props);
     Ctor.callHooks("beforeMount");
-    ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
-    Ctor.callHooks("mounted");
-    dom.setAttribute(ele, vnode.tag, "")
-    if (key) {
-        dom.setAttribute(ele, "key", key)
+    if (node) {
+        ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
+        dom.setAttribute(ele, vnode.tag, "")
+        if (key) {
+            dom.setAttribute(ele, "key", key)
+        }
     }
+    Ctor.callHooks("mounted");
     return ele;
 }
 
@@ -330,6 +322,13 @@ function parsePropsData(Ctor, data) {
     return Cprops;
 }
 
+function destroryVnode(vnode){
+    if(vnode.componentOptions){
+        vnode.componentOptions.Ctor.destory();
+    }
+    dom.remove(vnode.element);
+}
+
 function renChildren(rel, children) {
     if (Array.isArray(children)) {
         for (let child of children) {
@@ -339,7 +338,7 @@ function renChildren(rel, children) {
                     rel.appendChild(v);
                 })
             }
-            else {
+            else if (res) {
                 rel.appendChild(res);
             }
         }
