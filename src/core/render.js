@@ -5,27 +5,27 @@ import { isObj } from "../tools/untils.js"
 
 
 export default function render(vnode, container) {
-    if(container){ //覆盖渲染
+    if (container) { //覆盖渲染
         let rel;
         rel = renElement(vnode);
         dom.replace(container, rel);
     }
-    else{ //出现这种情况只能是自定义render之前是空，现在有渲染结果了
+    else { //出现这种情况只能是自定义render之前是空，现在有渲染结果了
         let warp = vnode.warpSact.wrapVnode;
         let parentEle = warp.getParentEle();
         let rel = vnode.element || renElement(vnode);
         let index = warp.parent.children.indexOf(warp) - 1;
         let achor = warp.parent.children[index].element;
-        dom.insert(rel,parentEle,dom.next(achor));
+        dom.insert(rel, parentEle, dom.next(achor));
     }
 }
 
 
 export function _patch(v1, v2) {
-    if(v1 === v2){
+    if (v1 === v2) {
         return;
     }
-    else if(v1 && !v2){
+    else if (v1 && !v2) {
         destroryVnode(v1);
     }
     else if (sameNode(v1, v2)) {
@@ -83,7 +83,7 @@ function patchText(vnode, rel) {
 function patchCompent(v1, v2) {
     let Ctor1 = v1.componentOptions.Ctor;
     Ctor1.$slot = renSlot(v2.componentOptions.children);
-    Ctor1.props = parsePropsData(Ctor1,v2.data);
+    Ctor1.props = parsePropsData(Ctor1, v2.data);
     Ctor1.patch();
     v2.componentOptions.Ctor = Ctor1;
 }
@@ -91,14 +91,17 @@ function patchCompent(v1, v2) {
 function patchAttrs(v1, v2) {
     let d1 = v1.data;
     let d2 = v2.data;
+    let c;
     if (!sameAttrs(d1, d2, "class")) {
-        dom.setAttribute(v1.element, "class", d2["class"])
+        c = d2["staticClass"] || ""
+        dom.setAttribute(v1.element, "class", c + " " + d2["class"])
     }
     if (!sameAttrs(d1, d2, "style")) {
         dom.setAttribute(v1.element, "style", d2["style"])
     }
     constrast(d1.attrs, d2.attrs, "attrs", v1.element)
     constrast(d1.props, d2.props, "props", v1.element)
+    constrast(d1.on, d2.on, "on", v1.element);
 }
 
 //diff算法核心 比较子数组
@@ -145,11 +148,7 @@ function patchChildren(parentEle, c1, c2) {
             if (!oc.patched && sameNode(nc, oc)) {
                 //找到就移动元素
                 dom.insert(oc.element, parentEle, dom.next(achor.element));
-                //如果是组件还需要更新核心
-                if (isComponent(nc, oc)) {
-                    nc.componentOptions = oc.componentOptions;
-                }
-                nc.element = oc.element;
+                patchVnode(oc,nc);
                 oc.patched = true;
                 achor = nc;
                 finded = true;
@@ -159,7 +158,7 @@ function patchChildren(parentEle, c1, c2) {
         //没有找到就新建插入
         if (!finded) {
             let rel = renElement(nc)
-            dom.insert(rel, parentEle, dom.next(achor.element));
+            dom.insert(rel, parentEle, dom.next(achor?.element));
             achor = nc;
         }
     }
@@ -199,13 +198,16 @@ function sameData(d1, d2, key) {
 }
 
 //比较属性并更改
-function constrast(na, la, key, rel) {
+function constrast(la, na, key, rel) {
     let hasText = []
     if (na && la) {
         for (let newAttr of Reflect.ownKeys(na)) {
             if (!sameAttrs(na, la, newAttr)) {
                 if (key === "attrs") {
                     dom.setAttribute(rel, newAttr, na[newAttr]);
+                }
+                else if (key === "on") {
+                    resetBindListener(rel, newAttr, na[newAttr], la[newAttr]);
                 }
                 else {
                     rel[newAttr] = na[newAttr];
@@ -218,6 +220,9 @@ function constrast(na, la, key, rel) {
                 if (key === "attrs") {
                     dom.removeAttribute(rel, oldAttr);
                 }
+                else if (key === "on") {
+                    unBindListener(rel, newAttr, la[newAttr]);
+                }
                 else {
                     rel[newAttr] = null;
                 }
@@ -225,6 +230,16 @@ function constrast(na, la, key, rel) {
         }
     }
 }
+
+function resetBindListener(rel, Name, newValue, oldValue) {
+    unBindListener(rel, Name, oldValue);
+    bindLisenter(rel, { [Name]: newValue })
+}
+
+function unBindListener(rel, Name, oldValue) {
+    rel.removeEventListener(Name, oldValue._wrapper);
+}
+
 
 function sameAttrs(obj1, obj2, name) {
     return obj1[name] === obj2[name];
@@ -250,7 +265,7 @@ function renElement(vnode) {
         renChildren(rel, children);
     }
     if (key) {
-        dom.setAttribute(ele, "key", key)
+        dom.setAttribute(rel, "key", key)
     }
     vnode.element = rel;
     return rel;
@@ -322,8 +337,8 @@ function parsePropsData(Ctor, data) {
     return Cprops;
 }
 
-function destroryVnode(vnode){
-    if(vnode.componentOptions){
+function destroryVnode(vnode) {
+    if (vnode.componentOptions) {
         vnode.componentOptions.Ctor.destory();
     }
     dom.remove(vnode.element);
@@ -345,6 +360,7 @@ function renChildren(rel, children) {
     }
 }
 function setAttrs(rel, data, self) {
+    let c = "";
     for (let i of Reflect.ownKeys(data)) {
         switch (i) {
             case "attrs":
@@ -357,7 +373,20 @@ function setAttrs(rel, data, self) {
                 setPropsAttrs(rel, data[i])
                 break;
             default:
-                dom.setAttribute(rel, i, data[i])
+                {
+                    if (i === "staticClass") {
+                        c += data[i] + " ";
+                    }
+                    else if (i === "class") {
+                        c += data[i] + " ";
+                    }
+                    else {
+                        dom.setAttribute(rel, i, data[i])
+                    }
+                }
+        }
+        if (c !== "") {
+            dom.setAttribute(rel, "class", c);
         }
     }
 }
@@ -366,16 +395,19 @@ function setPropsAttrs(rel, props) {
         rel[i] = props[i];
     }
 }
-function bindLisenter(rel, lisenters, self) {
-    for (let i of Reflect.ownKeys(lisenters)) {
-        rel.addEventListener(i, function () {
-            if (typeof lisenters[i] !== "function") {
-                throw new Error(`${i} 不是一个合法的函数，请检查！`)
+function bindLisenter(rel, lisenters) {
+    let keys = Reflect.ownKeys(lisenters)
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        let handler = lisenters[key]._wrapper = function () {
+            if (typeof lisenters[key] !== "function") {
+                throw new Error(`${key} 不是一个合法的函数，请检查！`)
             }
             openTick();
-            lisenters[i].apply(self, arguments);
+            lisenters[key](...arguments);
             resetTick();
-        })
+        };
+        rel.addEventListener(key, handler)
     }
 }
 function setDomAttrs(rel, attrs) {

@@ -1,4 +1,4 @@
-import { extend, isObj } from "../tools/untils.js";
+import {isObj } from "../tools/untils.js";
 import Parse from "./Parser.js";
 import Generate from "./generate.js";
 import { reactivate } from "./reactivity.js";
@@ -15,6 +15,7 @@ export default function initAll(sact, options) {
     initComponent(sact);
     initRender(sact);
     sact.callHooks("created");
+    initPlug(sact);
 }
 
 //初始化对象
@@ -70,13 +71,13 @@ function initComponent(sact) {
         sact.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
     }
+    sact.componentList = [];
     if (isObj(component)) { //使用组件时,将组件添加到环境中
-        sact.componentList = [];
         for (let con of Reflect.ownKeys(component)) {
             sact.componentList.push(con);
         }
-        sact.components = component;
     }
+    sact.components = component || {};
     //每个sact赋予一个新的cid
     sact.cid = Number.parseInt(Math.random() * 100);
 }
@@ -131,5 +132,14 @@ function initWhen(sact) {
     sact.callHooks = function (fnName) {
         let fn = opts[fnName];
         fn && typeof fn === "function" && fn.apply(sact);
+    }
+}
+
+function initPlug(sact){
+    let plugList = sact.getplug();
+    if(plugList){
+        for(let p of plugList){
+            p.install && p.install.call(p,sact);
+        }
     }
 }

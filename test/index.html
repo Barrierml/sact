@@ -8,42 +8,50 @@
     <title>Document</title>
 </head>
 
+<style>
+    .pagination{
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        list-style: none;
+    }
+    .page-item{
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        text-align: center;
+        border: 1px solid #d9d9d9;
+        color: #000;
+        margin-right: 5px;
+        transition: background .3s cubic-bezier(0.075, 0.82, 0.165, 1);
+        border-radius: 3px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .page-item:hover{
+        background: #0084ff;
+        color: #fff;
+        border: 1px solid #fff;
+    }
+    .page-item.active{
+        background: #0084ff;
+        box-shadow: none;
+        color: #fff;
+        border: 1px solid #fff;
+    }
+</style>
 <body>
 
     <div id="root">
-
-        <button @click="load =! load" :value="'qq'">显示</button>
-        <button @click="meishi">加上去</button>
-        <p>{{qq}}</p>
-        <keep-alive>
-            <input s-if="load" />
-        </keep-alive>
-        <test s-if="load">{{qq}}</test>
+        <input class="哈哈 123" type="text" :value="qq" @input="meishi">
+        <p s-for="ww in ff" @click="mm">
+            <input type="text" :value="ww === current">
+        </p>
+        <pg :total="80"></pg>
     </div>
+    <script type="module" src="../src/main.js"></script>
     <script type="module">
-        import Sact from "../src/sact.js"
-        import keepAlive from "../src/component/keep-alive.js"
-        let test = Sact.component({
-            template: `<div>
-                <slot>哈哈哈</slot>
-                <input @input="ww"/>
-                <button @click='jiayi'>点我</button>
-            </div>`,
-            data() {
-                return { count: 0, input: "" }
-            },
-            props: {
-                text: "哈哈哈",
-            },
-            method: {
-                jiayi() {
-                    this.data.count++;
-                },
-                ww(e) {
-                    this.data.input = e.target.value;
-                }
-            },
-        })
+        import pg from "./pg.js"
         window.qq = new Sact({
             ele: "#root",
             data: {
@@ -51,21 +59,23 @@
                 load: true,
                 ff: [1, 2, 3],
                 count: 4,
+                current:1,
             },
             method: {
-                ww() {
+                mm() {
                     this.data.ff.push(this.data.count++)
+                    this.data.current ++;
                 },
-                meishi(k) {
-                    this.data.qq += "哈哈哈";
+                meishi(e) {
+                    console.log(e.target.value)
+                    this.data.qq = e.target.value;
                 },
                 show() {
                     this.data.load = !this.data.load
                 }
             },
-            component: {
-                test,
-                "keep-alive": keepAlive,
+            component:{
+                pg:Sact.component(pg),
             }
         })
     </script>

@@ -70,6 +70,7 @@ export function clearDep(sact){
 const queue = [];
 let waiting = false;
 let has = {};
+let flushing = false;
 export function openTick() { //开启数据收集
     waiting = true;
 }
@@ -80,9 +81,12 @@ export function resetTick(){ //释放数据
 //将不同的sact放入队列
 function queueNotion(sact) {
     let id = sact.cid;
-    if (!has[id]){
-        has[id] = true;
-        queue.push(sact)
+    
+    if(!flushing){
+        if (!has[id]){
+            has[id] = true;
+            queue.push(sact)
+        }
     }
     if (!waiting) {
         resetTick();
@@ -90,15 +94,16 @@ function queueNotion(sact) {
 }
 //通知所有sact刷新
 function flushSchedulerQueue() {
+    flushing = true;
     let sact;
     for (let index = 0; index < queue.length; index++) {
         sact = queue[index];
         sact.notify && sact.notify();
     }
-
     //清楚数据等待下次收集
     queue.length = 0;
     waiting = false;
+    flushing = false;
     has = {}
 }
 

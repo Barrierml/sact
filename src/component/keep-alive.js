@@ -1,10 +1,9 @@
-//缓存组件的一个内部组件
 import Sact from "../sact.js"
 export default Sact.component({
     name: "keep-alive",
     data() {
         return {
-            old:[],cache:[]
+            old:true,cache:[]
         }
     },
     isAbstract: true, //抽象组件,需要自己重写render
@@ -13,16 +12,22 @@ export default Sact.component({
     mounted(){
         let pici = this.$slot.default[0];
         if(pici){
-            this.data.cache.push(pici)
+            this.data.cache[0] = pici;
         }
     },
-    render(c,p){
+    render(){
         let pici = this.$slot.default[0];
-        if(pici && this.data.cache?.length === 1){
+        if(pici && this.data.cache?.length === 1 && !this.data.old){
+            this.data.old = true;
             return this.data.cache[0];
         }
         else if(pici){
+            this.data.cache[0] = pici;
+            this.data.old = true;
             return pici;
+        }
+        else{
+            this.data.old = false;
         }
     }
 })
