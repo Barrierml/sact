@@ -165,7 +165,7 @@ function patchChildren(parentEle, c1, c2) {
         if (!finded) {
             let rel = renElement(nc)
             dom.insert(rel, parentEle, achor);
-            achor = nc;
+            achor = nc.element;
         }
     }
     //删除未处理到的dom
