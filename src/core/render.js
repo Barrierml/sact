@@ -1,6 +1,6 @@
 import dom from "../api/runtime-dom.js";
 import { openTick, resetTick } from "./reactivity.js"
-import { isObj } from "../tools/untils.js"
+import { extend, isObj } from "../tools/untils.js"
 
 
 
@@ -141,10 +141,11 @@ function patchChildren(parentEle, c1, c2) {
     if (!c3) { c3 = [] }
     if (!c4) { c4 = [] }
     let achor;
-    if(oldStartIdx === -1){//说明需要添加的元素在头部
-        achor = c1[oldEndIdx + 1].element;//选取截取列表的后一个元素
+    if (oldStartIdx === -1) {//说明需要添加的元素在头部
+        achor = c1[oldEndIdx + 1]?.element;//选取被截取列表的随后的一个元素
+        console.log(achor);
     }
-    else{
+    else {
         achor = dom.next(c1[oldStartIdx].element); //正常情况锚点选取被截取列表的前一个元素
     }
     for (let nc of c4) {
@@ -153,9 +154,9 @@ function patchChildren(parentEle, c1, c2) {
             if (!oc.patched && sameNode(nc, oc)) {
                 //找到就移动元素
                 dom.insert(oc.element, parentEle, achor);
-                patchVnode(oc,nc);
+                patchVnode(oc, nc);
                 oc.patched = true;
-                achor = nc;
+                achor = nc.element;
                 finded = true;
                 break;
             }
@@ -287,8 +288,8 @@ function renComponent(vnode, option) {
     Ctor.$slot = renSlot(children);
     //开始渲染
     let ele = null;
-    let node = Ctor.$vnode = Ctor._render(props);
     Ctor.callHooks("beforeMount");
+    let node = Ctor.$vnode = Ctor._render(props);
     if (node) {
         ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
         dom.setAttribute(ele, vnode.tag, "")
@@ -300,18 +301,6 @@ function renComponent(vnode, option) {
     return ele;
 }
 
-
-//生成抽象组件 本身不做任何渲染,只渲染组件内的
-function renAbstractCompoent(Ctor, children) {
-    let res = [];
-    Ctor.$vnode = children;
-    Ctor.callHooks("beforeMount");
-    for (let child of children) {
-        res.push(renElement(child));
-    }
-    Ctor.callHooks("mounted");
-    return res;
-}
 
 //生成插槽
 function renSlot(children) {
@@ -328,18 +317,18 @@ function renSlot(children) {
 //传入父组件的参数
 function parsePropsData(Ctor, data) {
     let Cprops = Ctor.props;
-    if (!Cprops) {
-        Ctor.props = Cprops = {};
-    }
+    let res = extend({}, Cprops);
     let { attrs, on, props } = data;
     for (let i of [attrs, on, props]) {
         if (isObj(i)) {
             for (let j of Reflect.ownKeys(i)) {
-                Cprops[j] = attrs[j];
+                //如果原来的props存在并且是函数的情况下传入新参数
+                res[j] = i[j]
             }
         }
     }
-    return Cprops;
+    Ctor.props = res;
+    return res;
 }
 
 function destroryVnode(vnode) {

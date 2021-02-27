@@ -8,6 +8,7 @@ let template = `
 <li s-if="currentPage < maxPage"  class="page-item" @click="nextPage">
     >
 </li>
+<p style="line-height: 32px;margin: 0;padding: 0;">共 {{maxPage}}页</p>
 </ul>
 `
 export default {
@@ -18,16 +19,14 @@ export default {
             currentPage: 1,
             total: 12,
             limit: 12,
-            maxPage: 2,
+            maxPage: 0,
         }
     },
     method: {
         prePage() {
-            console.log(this.data.currentPage)
             this.changePage(this.data.currentPage - 1);
         },
         nextPage() {
-            console.log(this.data.currentPage)
             this.changePage(this.data.currentPage + 1);
         },
         draw() { //根据current渲染改变列表
@@ -78,7 +77,5 @@ export default {
         currentPage: 1,
         limit: 12,
         showNum: 5,//默认展示多少个页码
-        changepage(page) {
-        },
     }
 }

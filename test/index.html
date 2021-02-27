@@ -9,13 +9,14 @@
 </head>
 
 <style>
-    .pagination{
+    .pagination {
         width: 100%;
         display: flex;
         flex-direction: row;
         list-style: none;
     }
-    .page-item{
+
+    .page-item {
         width: 30px;
         height: 30px;
         line-height: 30px;
@@ -28,33 +29,25 @@
         cursor: pointer;
         user-select: none;
     }
-    .page-item:hover{
+
+    .page-item:hover {
         background: #0084ff;
         color: #fff;
         border: 1px solid #fff;
     }
-    .page-item.active{
+
+    .page-item.active {
         background: #0084ff;
         box-shadow: none;
         color: #fff;
         border: 1px solid #fff;
     }
 </style>
+
 <body>
 
     <div id="root">
-        <div class="file-xx-card" s-if="show">
-            <div s-if="!load" class="UCPfilesMian">
-                <p class="sectionTitle">搜索结果</p>
-                <file s-for="item in fileList" :key="item.pk" :title="item.title" :id="item.pk"
-                    :imgUrl="item.main_img_url" :money="item.money" :sellNum="item.download_num_show"
-                    :time="c_timeToHANdata(item.c_time)">
-                    <p>123</p>
-                </file>
-            </div>
-            <p s-if="load">加载中</p>
-            <pagination :total="200" :limit="12" :changepage="changePage"></pagination>
-        </div>
+        <pagination :changepage="cg" :total="200" :limit="12"></pagination>
     </div>
 
     <div id="file_search">
@@ -68,7 +61,7 @@
         import pg from "./pg.js"
         let own = "{{ own }}";
         let userId = "{{user.pk}}";
-    
+
         function encodeData(data) {
             let { hits, total } = data.hits;
             let res = hits.map((v) => {
@@ -76,7 +69,7 @@
             }) || [];
             return [res, total?.value || 0]
         }
-    
+
         window.root = new Sact({
             ele: "#root",
             data: {
@@ -98,11 +91,14 @@
                     this.data.load = true;
                     setTimeout(() => {
                         this.data.load = false;
-                        },1000)
+                    }, 1000)
                 },
                 changePage(page) {
                     console.log(page)
                     this.search(this.data.text, (page - 1) * 12);
+                },
+                cg(page){
+                    console.log(page);
                 }
             },
             mounted() {
