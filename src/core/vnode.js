@@ -10,7 +10,8 @@ class Vnode {
 
         this.parent = undefined
         this.text = istext ? a : undefined
-        this.key = b?.key;
+        this.key = b && b.key;
+        
         this.element = undefined
 
         this.zid = zid
@@ -22,7 +23,7 @@ class Vnode {
         while(parent && !parent.element){
             parent = parent.parent;
         }
-        return parent?.element;
+        return parent && parent.element;
     }
 }
 
@@ -53,7 +54,7 @@ function createComponent(Ctor, data, context, children, tag, zid) {
 }
 function createSolt(vm, data, children) {
     if (vm.$slot) {
-        let slotName = data?.attrs?.name
+        let slotName =  data.attrs && data.attrs.name;
         if (slotName) {
             return vm.$slot[slotName] || null;
         }

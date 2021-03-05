@@ -24,10 +24,10 @@ export default {
         parent && parent.replaceChild(ndom, odom);
     },
     next(dom){
-        return dom?.nextElementSibling;
+        return dom && dom.nextElementSibling;
     },
     pre(dom){
-        return dom?.previousElementSibling;
+        return dom && dom.previousElementSibling;
     },
     //更改元素文本
     setElementText(el,text){

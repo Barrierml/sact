@@ -17,7 +17,7 @@ export default Sact.component({
     },
     render(){
         let pici = this.$slot.default[0];
-        if(pici && this.data.cache?.length === 1 && !this.data.old){
+        if(pici && this.data.cache.length === 1 && !this.data.old){
             this.data.old = true;
             return this.data.cache[0];
         }

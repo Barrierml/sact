@@ -47,29 +47,12 @@
 <body>
 
     <div id="root">
-        <pagination :changepage="cg" :total="200" :limit="12"></pagination>
+        <pagination :changepage="cg" :total="total" :limit="12"></pagination>
     </div>
 
-    <div id="file_search">
-        <input @input="input" :value="text" style="margin-left: 10px;" :class="'userTabSearch'" type="text"
-            placeholder="输入要搜索的文件名" />
-        <button @click="sosuo" :class="'onSearch mdui-btn mdui-btn-dense mdui-color-theme-accent'">搜索
-        </button>
-    </div>
     <script type="module" src="../src/main.js"></script>
     <script type="module">
         import pg from "./pg.js"
-        let own = "{{ own }}";
-        let userId = "{{user.pk}}";
-
-        function encodeData(data) {
-            let { hits, total } = data.hits;
-            let res = hits.map((v) => {
-                return v._id
-            }) || [];
-            return [res, total?.value || 0]
-        }
-
         window.root = new Sact({
             ele: "#root",
             data: {
@@ -77,7 +60,7 @@
                 show: false,
                 fileList: [],
                 isOwn: false,
-                total: 0,
+                total: 100,
                 offset: 0,
                 text: "",
             },
@@ -99,28 +82,6 @@
                 },
                 cg(page){
                     console.log(page);
-                }
-            },
-            mounted() {
-                this.data.isOwn = own === "True";
-            }
-        })
-        let qq = new Sact({
-            ele: "#file_search",
-            data: {
-                text: "",
-            },
-            method: {
-                input(e) {
-                    this.data.text = e.target.value;
-                },
-                sosuo() {
-                    if (!this.data.text) {
-                        $$.short_message_show("请输入要查询的内容");
-                    }
-                    else {
-                        root.search(this.data.text, 0);
-                    }
                 }
             },
         })

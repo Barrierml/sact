@@ -32,7 +32,7 @@ export function _patch(v1, v2) {
         patchVnode(v1, v2);
     }
     else {
-        render(v2, v1?.element);
+        render(v2, v1.element);
     }
 }
 
@@ -54,16 +54,16 @@ function patchVnode(v1, v2) {
 
 
 function prePatchChildren(c1, c2, parent) {
-    if ((c1?.length > 0 && c2?.length === 0)) {
+    if ((c1 && c1.length > 0 && c2 && c2.length === 0) || (c1 && !c2)) {
         c1.forEach((child) => {
             destroryVnode(child)
         })
     }
-    else if ((c1?.length === 0 && c2?.length > 0)) {
+    else if ((c1 && c1.length === 0 && c2 && c2.length > 0) || (!c1 && c2)) {
         renChildren(parent, c2)
     }
-    else if (c1?.length === 1 &&
-        c2?.length === 1 &&
+    else if ( c1 && c1.length === 1 &&
+        c2 && c2.length === 1 &&
         sameNode(c1[0], c2[0])
     ) {
         patchVnode(c1[0], c2[0]);
@@ -95,6 +95,9 @@ function patchAttrs(v1, v2) {
     if (!sameAttrs(d1, d2, "class")) {
         c = d2["staticClass"] || ""
         dom.setAttribute(v1.element, "class", c + " " + d2["class"])
+    }
+    else if (!sameAttrs(d1, d2, "staticClass")) {
+        dom.setAttribute(v1.element, "class", d2["staticClass"])
     }
     if (!sameAttrs(d1, d2, "style")) {
         dom.setAttribute(v1.element, "style", d2["style"])
@@ -142,8 +145,7 @@ function patchChildren(parentEle, c1, c2) {
     if (!c4) { c4 = [] }
     let achor;
     if (oldStartIdx === -1) {//说明需要添加的元素在头部
-        achor = c1[oldEndIdx + 1]?.element;//选取被截取列表的随后的一个元素
-        console.log(achor);
+        achor = c1[oldEndIdx + 1] && c1[oldEndIdx + 1].element;//选取被截取列表的随后的一个元素
     }
     else {
         achor = dom.next(c1[oldStartIdx].element); //正常情况锚点选取被截取列表的前一个元素
@@ -156,7 +158,7 @@ function patchChildren(parentEle, c1, c2) {
                 dom.insert(oc.element, parentEle, achor);
                 patchVnode(oc, nc);
                 oc.patched = true;
-                achor = nc.element;
+                achor = dom.next(nc.element);
                 finded = true;
                 break;
             }
@@ -165,7 +167,7 @@ function patchChildren(parentEle, c1, c2) {
         if (!finded) {
             let rel = renElement(nc)
             dom.insert(rel, parentEle, achor);
-            achor = nc.element;
+            achor = dom.next(nc.element);
         }
     }
     //删除未处理到的dom
@@ -178,7 +180,7 @@ function patchChildren(parentEle, c1, c2) {
 
 
 function sameNode(v1, v2) {
-    return (v1?.tag === v2?.tag && v1?.key === v2?.key)
+    return (v1.tag === v2.tag && v1.key === v2.key)
 }
 function isComponent(v1, v2) {
     return (v1.componentOptions && v2.componentOptions)

@@ -1,7 +1,7 @@
 import {isObj } from "../tools/untils.js";
 import Parse from "./Parser.js";
 import Generate from "./generate.js";
-import { reactivate } from "./reactivity.js";
+import { reactivate,openTick,resetTick } from "./reactivity.js";
 import { createVnode, createFor } from "./vnode.js";
 
 export default function initAll(sact, options) {
@@ -139,7 +139,9 @@ function initPlug(sact){
     let plugList = sact.getplug();
     if(plugList){
         for(let p of plugList){
+            openTick();
             p.install && p.install.call(p,sact);
+            resetTick();
         }
     }
 }
