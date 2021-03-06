@@ -55,8 +55,7 @@
         <div>
             <button @click="qq = !qq">change</button>
         </div>
-        <pp-pp :text="text">
-        </pp-pp>
+        <p s-for="ww in 10">{{ww}}</p>
     </div>
 
     <script type="module" src="../src/main.js"></script>
@@ -65,9 +64,6 @@
             template:`<p>
                 <slot></slot>
                 </P>`,
-            beforeUpdate(){
-                console.log("I'll updata")
-            }
         })
         window.root = new Sact({
             ele: "#root",
@@ -76,7 +72,8 @@
                 text:"haha",
             },
             method:{
-                pp(){
+                pp(e){
+                    console.log(e)
                 }
             },
             component:{

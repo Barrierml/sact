@@ -4,6 +4,7 @@
 import initAll from "./core/init.js";
 import render, { _patch } from "./core/render.js";
 import { clearDep } from "./core/reactivity.js"
+import { VariableNotFoundError } from "./core/error.js"
 
 const pluginList = [];
 export default class Sact {
@@ -15,12 +16,12 @@ export default class Sact {
     !this.isComponent && this.render();
   }
 
-  getplug(){
+  getplug() {
     return pluginList;
   }
 
   render() {
-    this.$vnode = this._render();
+    this.$vnode = VariableNotFoundError(() => this._render());
     this.callHooks("beforeMount");
     render(this.$vnode, this.$ele);
     this.callHooks("mounted");

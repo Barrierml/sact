@@ -94,8 +94,17 @@ function genData(ast) {
             const modifiers = parseModifiers(name);  // 事件修饰符（.stop/.prevent/.self）
             name = removeModifiers(name);
             hasEvents = true;
-            name = name.replace(/^@|^s-on:|s@/, '');
+            name = name.replace(/^@|^s-on:|^s@/, '');
             addHandler(events, name, value, modifiers);
+        }
+        else if (/^s-modal/.test(name)) {
+            const modifiers = parseModifiers(name);  // 事件修饰符（.lazy/.trim./number）
+            name = removeModifiers(name);
+            hasEvents = true;
+            name = name.replace(/^s-modal/, '');
+            let bindName =  addModaler(events, ast.tagName, value, modifiers);
+            hasProps = true;
+            props += `"${bindName}": (${value}),`;
         }
         else {
             hasAttrs = true;
@@ -123,6 +132,36 @@ function parseModifiers(name) {
 
 function removeModifiers(name) {
     return name.replace(/\.[^\.]+/g, '');
+}
+function addModaler(events, tagName, value, modifiers) {
+    let code = "let _v_ =";
+    let handlerName = "change";
+    let bindValue = "value";
+    switch (tagName) {
+        case "input":
+            handlerName = "input";
+            code += `$event.target.value;`;
+            bindValue = "value";
+            break;
+        case "select":
+            handlerName = "change";
+            code += `$event.target.value;`
+            bindValue = "value";
+            break;
+    }
+    if(Array.isArray(modifiers)){
+        for(let i = 0;i<modifiers.length;i++){
+            if(modifiers[i] === "trim"){
+                code += `_v_ = _v_.trim && _v_.trim();`
+            }
+            else if(modifiers[i] === "number"){
+                code += `_v_ = parseInt(_v_) || _v_;`
+            }
+        }
+    }
+    code += `${value} = _v_;`;
+    events[handlerName] = {value:code};
+    return bindValue;
 }
 function addHandler(events, name, value, modifiers) {
     const captureIndex = modifiers && modifiers.indexOf('capture');
