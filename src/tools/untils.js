@@ -27,7 +27,7 @@ export function isObj(obj){
 //扩展对象属性
 export function extend(obj, res) {
     if(!isObj(res)){
-        return
+        return obj;
     }
     for (let i of Reflect.ownKeys(res)) {
         obj[i] = res[i]

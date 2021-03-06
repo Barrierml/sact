@@ -62,7 +62,7 @@ function prePatchChildren(c1, c2, parent) {
     else if ((c1 && c1.length === 0 && c2 && c2.length > 0) || (!c1 && c2)) {
         renChildren(parent, c2)
     }
-    else if ( c1 && c1.length === 1 &&
+    else if (c1 && c1.length === 1 &&
         c2 && c2.length === 1 &&
         sameNode(c1[0], c2[0])
     ) {
@@ -81,11 +81,39 @@ function patchText(vnode, rel) {
 
 //更新组件
 function patchCompent(v1, v2) {
-    let Ctor1 = v1.componentOptions.Ctor;
-    Ctor1.$slot = renSlot(v2.componentOptions.children);
-    Ctor1.props = parsePropsData(Ctor1, v2.data);
-    Ctor1.patch();
-    v2.componentOptions.Ctor = Ctor1;
+    let newOpts = v2.componentOptions;
+    let oldOpts = v1.componentOptions
+    let Ctor = (newOpts.Ctor = oldOpts.Ctor);
+    //保存旧值
+    let oldValue = [Ctor.$slot,Ctor.props];
+    Ctor.$slot = renSlot(newOpts.children);
+    Ctor.props = parsePropsData(Ctor, v2.data);
+    //生成新值
+    let newValue = [Ctor.$slot,Ctor.props]
+    if(shouldPacthComponent(oldValue,newValue)){
+        Ctor.patch();
+    }
+}
+//判断是否应该刷新组件
+function shouldPacthComponent([oldSlot,oldProps],[newSlot,newProps]){
+    if(!(oldSlot === newSlot)){
+        return true;
+    }
+    if(oldProps && newProps){
+        let oldKeys = Reflect.ownKeys(oldProps);
+        let newKeys = Reflect.ownKeys(newProps);
+        if(oldKeys.length !== newKeys.length){
+            return true;
+        }
+        for(let i= 0;i<oldKeys.length;i++){
+            let oldKey = oldKeys[i];
+            let newKey = newKeys[i];
+            if(!(oldProps[oldKey] === newProps[newKey])){
+                return true;
+            }
+        }
+    }
+    return false;
 }
 //更新属性
 function patchAttrs(v1, v2) {
@@ -238,7 +266,7 @@ function constrast(la, na, key, rel) {
         }
     }
 }
-
+//重置绑定事件
 function resetBindListener(rel, Name, newValue, oldValue) {
     unBindListener(rel, Name, oldValue);
     bindLisenter(rel, { [Name]: newValue })

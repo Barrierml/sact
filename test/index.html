@@ -42,48 +42,46 @@
         color: #fff;
         border: 1px solid #fff;
     }
+    button{
+        transition: all 1s;
+    }
 </style>
 
 <body>
 
     <div id="root">
-        <pagination :changepage="cg" :total="total" :limit="12"></pagination>
+        <button :key="123" s-if="qq" style="background-color: black;color: blanchedalmond;">哈哈</button>
+        <button :key="321" style="background-color: red;">123</button>
+        <div>
+            <button @click="qq = !qq">change</button>
+        </div>
+        <pp-pp :text="text">
+        </pp-pp>
     </div>
 
     <script type="module" src="../src/main.js"></script>
     <script type="module">
-        import pg from "./pg.js"
+        let pp = new Sact.component({
+            template:`<p>
+                <slot></slot>
+                </P>`,
+            beforeUpdate(){
+                console.log("I'll updata")
+            }
+        })
         window.root = new Sact({
             ele: "#root",
             data: {
-                load: false,
-                show: false,
-                fileList: [],
-                isOwn: false,
-                total: 100,
-                offset: 0,
-                text: "",
+                qq:false,
+                text:"haha",
             },
-            component: {
-                pagination: Sact.component(pg),
-            },
-            method: {
-                search(text, offset) {
-                    this.data.text = text;
-                    this.data.show = true;
-                    this.data.load = true;
-                    setTimeout(() => {
-                        this.data.load = false;
-                    }, 1000)
-                },
-                changePage(page) {
-                    console.log(page)
-                    this.search(this.data.text, (page - 1) * 12);
-                },
-                cg(page){
-                    console.log(page);
+            method:{
+                pp(){
                 }
             },
+            component:{
+                "pp-pp":pp,
+            }
         })
     </script>
 </body>
