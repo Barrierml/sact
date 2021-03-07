@@ -50,39 +50,45 @@
 <body>
 
     <div id="root">
-        <div s-if="qq">
-            <p>钱钱钱</p>
+        <div :style="[stovj,red]">
+            <p>{{text}}</p>
             <input type="text">
         </div>
         <div s-if="!qq">
             <p>哈哈哈</p>
             <input type="text">
         </div>
-        <button @click="qq=!qq">123</button>
+        <button @click="pp">123</button>
+        <pg :total="total" :key="total"></pg>
+        <div s-for="ww in 5" s-if="ww !== 2">
+            {{ww}}
+        </div>
     </div>
 
     <script type="module" src="../src/main.js"></script>
     <script type="module">
-        let pp = new Sact.component({
-            template:`<p>
-                <slot></slot>
-                </P>`,
-            beforeUpdate(){
-                console.log("I'll updata")
-            }
-        })
+        import pg from "./pg.js"
         window.root = new Sact({
             ele: "#root",
             data: {
                 qq:false,
                 text:"haha",
+                total:100,
+                stovj:{
+                    color:"red",
+                },
+                red:{
+                    fontSize:"44px",
+                }
             },
             method:{
                 pp(){
+                    this.data.total = parseInt(Math.random()*100);
+                    console.log(this.data.total);
                 }
             },
             component:{
-                "pp-pp":pp,
+                pg
             }
         })
     </script>

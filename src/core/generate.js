@@ -218,15 +218,6 @@ function parseText(text) {
         }
         text = text.substring(hasName[2]);
     }
-    if (text) {
-        res += "'" + text.trim() + "'";
-    }
-    else {
-        res = res.substr(0, res.length - 1);
-    }
+    res += text ? "'" + text.trim() + "'" : res.substr(0, res.length - 1);
     return res;
 }
-
-
-
-

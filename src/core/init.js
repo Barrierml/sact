@@ -131,7 +131,9 @@ function initWhen(sact) {
     const opts = sact.$options;
     sact.callHooks = function (fnName) {
         let fn = opts[fnName];
-        fn && typeof fn === "function" && fn.apply(sact);
+        if(fn && typeof fn === "function"){
+            return fn.apply(sact);
+        } 
     }
 }
 

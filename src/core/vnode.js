@@ -11,16 +11,16 @@ class Vnode {
         this.parent = undefined
         this.text = istext ? a : undefined
         this.key = b && b.key;
-        
+
         this.element = undefined
 
         this.zid = zid
         this.children = genVdomChildren(c, vm, this)
     }
 
-    getParentEle(){
+    getParentEle() {
         let parent = this.parent;
-        while(parent && !parent.element){
+        while (parent && !parent.element) {
             parent = parent.parent;
         }
         return parent && parent.element;
@@ -54,7 +54,7 @@ function createComponent(Ctor, data, context, children, tag, zid) {
 }
 function createSolt(vm, data, children) {
     if (vm.$slot) {
-        let slotName =  data.attrs && data.attrs.name;
+        let slotName = data.attrs && data.attrs.name;
         if (slotName) {
             return vm.$slot[slotName] || null;
         }
@@ -81,7 +81,12 @@ export function createFor(iterater, fn) {
     }
     else if (typeof (iterater) === "string") {
         for (let i of iterater) {
-            res.push(fn(i));;
+            res.push(fn(i));
+        }
+    }
+    else if (typeof (iterater) === "number") {
+        for (let i = 1; i <= iterater; i++) {
+            res.push(fn(i));
         }
     }
     return res
@@ -92,7 +97,7 @@ function genVdomChildren(list, vm, parent) {
     if (list) {
         for (let i of list) {
             if (Array.isArray(i)) {
-                res = res.concat(genVdomChildren(i,vm,parent));
+                res = res.concat(genVdomChildren(i, vm, parent));
             }
             else if (typeof i === "string") {
                 res.push(new Vnode(vm, i, undefined, undefined, undefined, true))
@@ -101,6 +106,6 @@ function genVdomChildren(list, vm, parent) {
                 res.push(i);
             }
         }
-        return res.map((v)=>{v.parent = parent;return v;});
+        return res.map((v) => { v.parent = parent; return v; });
     }
 }
