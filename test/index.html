@@ -50,13 +50,15 @@
 <body>
 
     <div id="root">
-        <button :key="123" s-if="qq" style="background-color: black;color: blanchedalmond;">哈哈</button>
-        <button :key="321" style="background-color: red;">123</button>
-        <div>
-            <button @click="qq = !qq">change</button>
+        <div s-if="qq">
+            <p>钱钱钱</p>
+            <input type="text">
         </div>
-        <pp-pp :text="text">
-        </pp-pp>
+        <div s-if="!qq">
+            <p>哈哈哈</p>
+            <input type="text">
+        </div>
+        <button @click="qq=!qq">123</button>
     </div>
 
     <script type="module" src="../src/main.js"></script>
