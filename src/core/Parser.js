@@ -177,7 +177,7 @@ export default function Parse(html) {
         }
 
         if(!root){root = currentAst}
-        if (!unary && name !== "input") { //非闭合标签或者input直接入栈
+        if (!unary && name !== "input" &&name !== "img") { //非闭合标签或者input直接入栈
             stack.push(currentAst)
         }
         else { //闭合直接加入父元素

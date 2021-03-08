@@ -1,7 +1,7 @@
-import {isObj } from "../tools/untils.js";
+import { isObj } from "../tools/untils.js";
 import Parse from "./Parser.js";
 import Generate from "./generate.js";
-import { reactivate,openTick,resetTick } from "./reactivity.js";
+import { reactivate, openTick, resetTick } from "./reactivity.js";
 import { createVnode, createFor } from "./vnode.js";
 
 export default function initAll(sact, options) {
@@ -70,6 +70,7 @@ function initComponent(sact) {
         sact.isComponent = true;
         sact.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
+        sact.isShowAttr = options.isShowAttr || true; //默认显示属性在组件上
     }
     sact.componentList = [];
     if (isObj(component)) { //使用组件时,将组件添加到环境中
@@ -98,7 +99,7 @@ function initRender(sact) {
     //用户可以自定义render函数，手动修改vnode来渲染,不过随意修改vnode会造成patch错误，请小心使用
     let { render } = options;
     if (render && typeof render === "function") {
-        sact._render = (props) => render.apply(sact,[sact._c_, props]);
+        sact._render = (props) => render.apply(sact, [sact._c_, props]);
     }
 }
 
@@ -123,6 +124,7 @@ function initWhen(sact) {
      * created  已经创建 data，method可以调用，还未生成虚拟vnode
      * beforeMount  挂载之前 这时虚拟vnode已经生成了，还未开始生成真实dom，可以通过$vnode查看虚拟vnode
      * mounted  装载后 这时实例已经开始正常运行了，所有属性都可以访问了
+     * shouldUpdate（oldProps，newProps）传入老的props和新的props，可以自行根据返回值来判断更新
      * beforeUpdate 数据更新前，这时数据已经修改完毕，但是尚未更新
      * updated  数据更新完毕了，这时真实dom已经修改过了
      * beforeDestory  （仅限组件）删除前，要删除实例时，会先调用这个方法，此时所有数据均可以访问
@@ -131,18 +133,27 @@ function initWhen(sact) {
     const opts = sact.$options;
     sact.callHooks = function (fnName) {
         let fn = opts[fnName];
-        if(fn && typeof fn === "function"){
+        let type = typeof fn;
+        if (fnName === "shouldUpdate") {
+            return function (o,v) {
+                if (fn && type === "function") {
+                    return fn.apply(sact, [o, v]);
+                }
+                return true;
+            }
+        }
+        else if (fn && type === "function") {
             return fn.apply(sact);
-        } 
+        }
     }
 }
 
-function initPlug(sact){
+function initPlug(sact) {
     let plugList = sact.getplug();
-    if(plugList){
-        for(let p of plugList){
+    if (plugList) {
+        for (let p of plugList) {
             openTick();
-            p.install && p.install.call(p,sact);
+            p.install && p.install.call(p, sact);
             resetTick();
         }
     }

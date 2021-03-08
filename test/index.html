@@ -56,18 +56,33 @@
         </div>
         <div s-if="!qq">
             <p>哈哈哈</p>
-            <input type="text">
+            <input @input="text = $event.target.value" type="text">
         </div>
         <button @click="pp">123</button>
-        <pg :total="total" :key="total"></pg>
-        <div s-for="ww in 5" s-if="ww !== 2">
-            {{ww}}
-        </div>
+        <pp :icon="text" key="哈哈哈">
+
+        </pp>
     </div>
 
     <script type="module" src="../src/main.js"></script>
     <script type="module">
-        import pg from "./pg.js"
+        let template = `
+
+<button class="chatBtn mdui-btn mdui-btn-icon mdui-text-color-theme-icon mdui-ripple">
+<i class="mdui-icon material-icons">{{props.icon}}</i>
+</button>
+
+`
+let pp =  Sact.component({
+    template,
+    props:{
+        icon:"tag_faces"
+    },
+    shouldUpdate(){
+        console.log(123)
+        return false;
+    }
+})
         window.root = new Sact({
             ele: "#root",
             data: {
@@ -88,7 +103,7 @@
                 }
             },
             component:{
-                pg
+                pp,
             }
         })
     </script>

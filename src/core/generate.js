@@ -208,16 +208,16 @@ function parseText(text) {
     if (!AttrsTag.test(text)) {
         return null;
     }
-    let res = "", hasName;
-    while (hasName = getDynamicName(text)) {
-        if (hasName[1] === 0) {
-            res += `(${hasName[0]})+`;
+    let [exp,start,end] = getDynamicName(text);
+    let res = [];
+    while (exp) {
+        if(start !== 0){
+            res.push(`'${text.substring(0,start).trim()}'`);
         }
-        else {
-            res += `'${text.substring(0, hasName[1]).trim()}' +(${hasName[0]})+`;
-        }
-        text = text.substring(hasName[2]);
+        res.push(`(${exp})`);
+        text = text.substring(end);
+        [exp,start,end] = getDynamicName(text);
     }
-    res += text ? "'" + text.trim() + "'" : res.substr(0, res.length - 1);
-    return res;
+    if(text){res.push(`'${text.trim()}'`)}
+    return res.join("+");
 }

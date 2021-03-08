@@ -84,14 +84,18 @@ function patchCompent(v1, v2) {
     let newOpts = v2.componentOptions;
     let oldOpts = v1.componentOptions
     let Ctor = (newOpts.Ctor = oldOpts.Ctor);
-    //保存旧值
+    //旧值
     let oldValue = [Ctor.$slot, Ctor.props];
     Ctor.$slot = renSlot(newOpts.children);
     Ctor.props = parsePropsData(Ctor, v2.data);
-    //生成新值
+    //新值
     let newValue = [Ctor.$slot, Ctor.props]
-    if (shouldPacthComponent(oldValue, newValue)) {
-        Ctor.patch();
+    //shouldUpate
+    if (Ctor.callHooks("shouldUpdate")(oldValue[1],newValue[1])) {
+        if (shouldPacthComponent(oldValue, newValue)) {
+            Ctor.patch();
+            setAttrs(Ctor.$ele,Ctor.props,Ctor);
+        }
     }
 }
 //判断是否应该刷新组件
@@ -210,29 +214,6 @@ function patchChildren(parentEle, c1, c2) {
 function sameNode(v1, v2) {
     return (v1.tag === v2.tag && v1.key === v2.key)
 }
-function isComponent(v1, v2) {
-    return (v1.componentOptions && v2.componentOptions)
-}
-
-//判断
-function sameData(d1, d2, key) {
-    if (d1 && d2) {
-        for (let newAttr of Reflect.ownKeys(d2)) {
-            if (!sameAttrs(d1, d2, newAttr)) {
-                if (key === "attrs") {
-                    dom.setAttribute(rel, newAttr, na[newAttr]);
-                }
-                else {
-                    rel[newAttr] = na[newAttr];
-                }
-                hasText.push(newAttr);
-            }
-        }
-        return true;
-    }
-    return false;
-}
-
 //比较属性并更改
 function constrast(la, na, key, rel) {
     let hasText = []
@@ -301,7 +282,7 @@ function renElement(vnode) {
         renChildren(rel, children);
     }
     if (key) {
-        dom.setAttribute(rel, "key", key)
+        dom.setAttribute(ele, "key", key);
     }
     vnode.element = rel;
     return rel;
@@ -322,9 +303,11 @@ function renComponent(vnode, option) {
     let node = Ctor.$vnode = Ctor._render(props);
     if (node) {
         ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
-        dom.setAttribute(ele, vnode.tag, "")
+        if (Ctor.isShowAttr) {
+            setAttrs(ele, props, Ctor);
+        }
         if (key) {
-            dom.setAttribute(ele, "key", key)
+            dom.setAttribute(ele, "key", key);
         }
     }
     Ctor.callHooks("mounted");
@@ -419,12 +402,12 @@ function setAttrs(rel, data, self) {
 }
 function setStyle(rel, style) {
     let type = typeof style;
-    if(Array.isArray(style)){
-        for(let i = 0;i<style.length;i++){
-            if(typeof style[i] === "object"){
-                setStyle(rel,style[i]);
+    if (Array.isArray(style)) {
+        for (let i = 0; i < style.length; i++) {
+            if (typeof style[i] === "object") {
+                setStyle(rel, style[i]);
             }
-            else{
+            else {
                 throw new Error(`${i} 并不是一个对象！`);
             }
         }
