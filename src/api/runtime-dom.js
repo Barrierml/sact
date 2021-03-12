@@ -34,6 +34,9 @@ export default {
         el.textContent = text;
     },
     setAttribute(el,key,value){
+        if(!key){
+            return;
+        }
         el.setAttribute(key, value);
     },
     removeAttribute(el,key){

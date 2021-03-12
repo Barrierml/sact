@@ -42,7 +42,8 @@
         color: #fff;
         border: 1px solid #fff;
     }
-    button{
+
+    button {
         transition: all 1s;
     }
 </style>
@@ -50,18 +51,10 @@
 <body>
 
     <div id="root">
-        <div :style="[stovj,red]">
-            <p>{{text}}</p>
-            <input type="text">
+        <div class="哈哈哈哈>
+            <div class="qq">
+            <p>1233</p>
         </div>
-        <div s-if="!qq">
-            <p>哈哈哈</p>
-            <input @input="text = $event.target.value" type="text">
-        </div>
-        <button @click="pp">123</button>
-        <pp :icon="text" key="哈哈哈">
-
-        </pp>
     </div>
 
     <script type="module" src="../src/main.js"></script>
@@ -73,36 +66,36 @@
 </button>
 
 `
-let pp =  Sact.component({
-    template,
-    props:{
-        icon:"tag_faces"
-    },
-    shouldUpdate(){
-        console.log(123)
-        return false;
-    }
-})
+        let pp = Sact.component({
+            template,
+            props: {
+                icon: "tag_faces"
+            },
+            shouldUpdate() {
+                console.log(123)
+                return false;
+            }
+        })
         window.root = new Sact({
             ele: "#root",
             data: {
-                qq:false,
-                text:"haha",
-                total:100,
-                stovj:{
-                    color:"red",
+                qq: false,
+                text: "haha",
+                total: 100,
+                stovj: {
+                    color: "red",
                 },
-                red:{
-                    fontSize:"44px",
+                red: {
+                    fontSize: "44px",
                 }
             },
-            method:{
-                pp(){
-                    this.data.total = parseInt(Math.random()*100);
+            method: {
+                pp() {
+                    this.data.total = parseInt(Math.random() * 100);
                     console.log(this.data.total);
                 }
             },
-            component:{
+            component: {
                 pp,
             }
         })

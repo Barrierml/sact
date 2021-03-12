@@ -14,7 +14,7 @@
 <script>
     const leftAttrsTag = "{{"
     const rightAttrsTag = "}}"
-    const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\(\)]+)\\s*${rightAttrsTag}`)
+    const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[]+)\\s*${rightAttrsTag}`)
     //判断含有为动态变量并返回变量 出现的位置 和最后的位置
     function getDynamicName(str) {
         let res = AttrsTag.exec(str)
@@ -40,6 +40,7 @@
         if(text){res.push(`'${text.trim()}'`)}
         return res.join("+");
     }
+    console.log(parseText(`{{ cc[qq] }}`))
 </script>
 
 </html>

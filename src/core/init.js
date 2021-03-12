@@ -23,6 +23,9 @@ function initElement(sact) {
     const options = sact.$options;
     if (options.ele) {
         sact.$ele = document.querySelector(options.ele);
+        if(!sact.$ele && !sact.isComponent){
+            throw new Error(`无效ele ${options.ele}`);
+        }
         sact.$template = sact.$ele.outerHTML;
     }
     if (options.template) {
@@ -91,8 +94,14 @@ function initRender(sact) {
         sact._render = () => null
     }
     else {
-        sact.$createVnode = Generate(Parse(sact.$template))
-        sact._render = () => sact.$createVnode.apply(sact);
+        if(sact.$template){
+            sact.$createVnode = Generate(Parse(sact.$template))
+            sact._render = () => sact.$createVnode.apply(sact);
+        }
+        else{
+            sact._render = null;
+            throw Error("请填写有效的模板字段！")
+        }
     }
 
     //当sact为组件时的渲染方法在vnode里面生成

@@ -90,6 +90,7 @@ function patchCompent(v1, v2) {
     Ctor.props = parsePropsData(Ctor, v2.data);
     //新值
     let newValue = [Ctor.$slot, Ctor.props]
+    Ctor.callHooks("beforeUpdate");
     //shouldUpate
     if (Ctor.callHooks("shouldUpdate")(oldValue[1],newValue[1])) {
         if (shouldPacthComponent(oldValue, newValue)) {
@@ -282,7 +283,7 @@ function renElement(vnode) {
         renChildren(rel, children);
     }
     if (key) {
-        dom.setAttribute(ele, "key", key);
+        dom.setAttribute(rel, "key", key);
     }
     vnode.element = rel;
     return rel;
