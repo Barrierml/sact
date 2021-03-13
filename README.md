@@ -34,12 +34,12 @@ Prue JavaScript ！只有一个包！
 您可以在您的页面内新建一个盒子容器，就像vue那样
 ### html
 
-```
+```html
 <div id="root"></div>
 ```
 ### js
 Sact支持两种方式声明一个新的应用
-```
+```javascript
 //对象声明式
 let app = new Sact({
     ele:"#root",
@@ -47,7 +47,7 @@ let app = new Sact({
     data:{msg:"hello world"}
 })
 ```
-```
+```javascript
 //链式声明式
 let app = 
 Sact.link()
