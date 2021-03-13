@@ -1,4 +1,4 @@
-
+const path = require("path");
 module.exports = {
     mode: "production",
     entry: {
@@ -6,7 +6,7 @@ module.exports = {
     },
     output: {
         filename: 'sact.js',
-        path: './dist/'
+        path:  path.resolve(__dirname,"dist"),
     },
     // optimization: {
     //     minimize: false,
