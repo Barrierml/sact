@@ -20,6 +20,47 @@ Sact是一个用于构建静态网站复杂功能开发的渐进式框架。它�
 3. **模板语法**，支持和vue一样的模板语法，react的jsx（需要用户自定义）
 4. **完整的生命周期**，从组件的创建到生命结束，我们有各种各样的生命周期hook函数
 5. **组件化开发**，一切皆组件！复用性极佳
-6. **支持链式创建**，功能模块与功能模块分离，对开发人员更加友好
+6. **支持链式开发**，功能模块相互分离，对开发人员更加友好
 ## Requirements - 必要条件
 Prue JavaScript ！只有一个包！
+## Install - 安装
+### 1. 浏览器环境
+```
+//引入dist下的sact.js即可使用sact的所有功能
+<script src="./dist/sact.js"></script>
+```
+## Start - 快速开始
+
+您可以在您的页面内新建一个盒子容器，就像vue那样
+### html
+
+```
+<div id="root"></div>
+```
+### js
+Sact支持两种方式声明一个新的应用
+```
+//对象声明式
+let app = new Sact({
+    ele:"#root",
+    template:"<div>{{msg}}</div>",
+    data:{msg:"hello world"}
+})
+```
+```
+//链式声明式
+let app = 
+Sact.link()
+.ele("#root")
+.tempalte("<div>{{msg}}</div>")
+.data({msg:"hello world"})
+.do
+```
+这只是两种不同的声明方式，所创建的app是完全一样的，对象式更好理解，而声明式更容易帮助我们将组件的每个功能分离，选择你喜欢的方式来进行开发吧。
+
+## Documentation - 文档与教程
+正在全力编写中！
+## Issues - 提问
+有任何关于Sact的使用问题，或者bug都可以在Issues内提出。
+## License - 许可证
+[MIT](https://opensource.org/licenses/MIT)
