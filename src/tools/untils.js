@@ -70,12 +70,12 @@ export function getDataInData(VName, data) {
 
 const leftAttrsTag = "{{"
 const rightAttrsTag = "}}"
-export const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.]+)\\s*${rightAttrsTag}`)
-//判断含有为动态变量并返回变量名 出现的位置 和最后的位置
+export const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&]+)\\s*${rightAttrsTag}`)
+//判断含有为动态变量并返getDynamicName回变量名 出现的位置 和最后的位置
 export function getDynamicName(str) {
     let res = AttrsTag.exec(str)
-    if(res){
-        return [res[1],res["index"],res["index"] + res[0].length]
+    if (res) {
+        return [res[1], res["index"], res["index"] + res[0].length]
     }
-    return false;
+    return [];
 }

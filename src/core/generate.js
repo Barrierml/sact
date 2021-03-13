@@ -3,6 +3,8 @@ import { getAndRemoveAttr, getDynamicName, AttrsTag } from "../tools/untils.js"
 //给每个元素附上索引
 let zid = 0;
 const simplePathRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/
+
+
 export default function generate(ast) {
     const code = genElement(ast);
     return new Function(`with(this){
@@ -235,7 +237,7 @@ function genText(text) {
     } else {
         const exp = parseText(text);
         if (exp) {
-            return 'String(' + exp + ')';
+            return '(' + exp + ')';
         } else {
             return JSON.stringify(text);
         }
@@ -245,25 +247,16 @@ function parseText(text) {
     if (!AttrsTag.test(text)) {
         return null;
     }
-    let res = "", hasName;
-    while (hasName = getDynamicName(text)) {
-        if (hasName[1] === 0) {
-            res += `(${hasName[0]})+`;
+    let [exp,start,end] = getDynamicName(text);
+    let res = [];
+    while (exp) {
+        if(start !== 0){
+            res.push(`'${text.substring(0,start).trim()}'`);
         }
-        else {
-            res += `'${text.substring(0, hasName[1]).trim()}' +(${hasName[0]})+`;
-        }
-        text = text.substring(hasName[2]);
+        res.push(`(${exp})`);
+        text = text.substring(end);
+        [exp,start,end] = getDynamicName(text);
     }
-    if (text) {
-        res += "'" + text.trim() + "'";
-    }
-    else {
-        res = res.substr(0, res.length - 1);
-    }
-    return res;
+    if(text){res.push(`'${text.trim()}'`)}
+    return res.join("+");
 }
-
-
-
-

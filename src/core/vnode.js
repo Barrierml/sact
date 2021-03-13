@@ -82,7 +82,12 @@ export function createFor(iterater, fn) {
     }
     else if (type === "string") {
         for (let i of iterater) {
-            res.push(fn(i));;
+            res.push(fn(i));
+        }
+    }
+    else if (typeof (iterater) === "number") {
+        for (let i = 1; i <= iterater; i++) {
+            res.push(fn(i));
         }
     }
     else if (type === "number") {

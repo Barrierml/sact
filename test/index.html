@@ -42,7 +42,8 @@
         color: #fff;
         border: 1px solid #fff;
     }
-    button{
+
+    button {
         transition: all 1s;
     }
 </style>
@@ -50,34 +51,52 @@
 <body>
 
     <div id="root">
-        <button :key="123" s-if="qq" style="background-color: black;color: blanchedalmond;">哈哈</button>
-        <button :key="321" style="background-color: red;">123</button>
-        <div>
-            <button @click="qq = !qq">change</button>
+        <div class="哈哈哈哈>
+            <div class="qq">
+            <p>1233</p>
         </div>
-        <p s-for="ww in 10">{{ww}}</p>
     </div>
 
     <script type="module" src="../src/main.js"></script>
     <script type="module">
-        let pp = new Sact.component({
-            template:`<p>
-                <slot></slot>
-                </P>`,
+        let template = `
+
+<button class="chatBtn mdui-btn mdui-btn-icon mdui-text-color-theme-icon mdui-ripple">
+<i class="mdui-icon material-icons">{{props.icon}}</i>
+</button>
+
+`
+        let pp = Sact.component({
+            template,
+            props: {
+                icon: "tag_faces"
+            },
+            shouldUpdate() {
+                console.log(123)
+                return false;
+            }
         })
         window.root = new Sact({
             ele: "#root",
             data: {
-                qq:false,
-                text:"haha",
-            },
-            method:{
-                pp(e){
-                    console.log(e)
+                qq: false,
+                text: "haha",
+                total: 100,
+                stovj: {
+                    color: "red",
+                },
+                red: {
+                    fontSize: "44px",
                 }
             },
-            component:{
-                "pp-pp":pp,
+            method: {
+                pp() {
+                    this.data.total = parseInt(Math.random() * 100);
+                    console.log(this.data.total);
+                }
+            },
+            component: {
+                pp,
             }
         })
     </script>

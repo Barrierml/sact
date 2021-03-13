@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+
+</body>
+<script>
+    const leftAttrsTag = "{{"
+    const rightAttrsTag = "}}"
+    const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[]+)\\s*${rightAttrsTag}`)
+    //判断含有为动态变量并返回变量 出现的位置 和最后的位置
+    function getDynamicName(str) {
+        let res = AttrsTag.exec(str)
+        if (res) {
+            return [res[1], res["index"], res["index"] + res[0].length]
+        }
+        return [];
+    }
+    function parseText(text) {
+        if (!AttrsTag.test(text)) {
+            return null;
+        }
+        let [exp,start,end] = getDynamicName(text);
+        let res = [];
+        while (exp) {
+            if(start !== 0){
+                res.push(`'${text.substring(0,start).trim()}'`);
+            }
+            res.push(`(${exp})`);
+            text = text.substring(end);
+            [exp,start,end] = getDynamicName(text);
+        }
+        if(text){res.push(`'${text.trim()}'`)}
+        return res.join("+");
+    }
+    console.log(parseText(`{{ cc[qq] }}`))
+</script>
+
+</html>

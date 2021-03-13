@@ -6,7 +6,6 @@ import { isObj } from "../tools/untils.js";
  * @param {} options 配置
  * 当数据变化的时候自动通知sact的notify()函数
  */
-
 export function reactivate(sact, data, options) {
     return new Proxy(data, {
         set(target, key, value, reciver) {

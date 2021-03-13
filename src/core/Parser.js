@@ -24,6 +24,7 @@ export default function Parse(html) {
     const stack = []
     let index = 0
     let last, lastTag, root
+    let old  = html;
     while (html) {
         last = html
 
@@ -154,6 +155,9 @@ export default function Parse(html) {
                 stack[i].parent = stack[pos]
             }
         }
+        if(pos < 0){
+            throw new Error(`\nSact-AstError:存在一个没有开始节点闭合节点！\n${old.substring(0,c)}---> ${old.substring(c)} <-----\n`)
+        }
         if (pos) {
             stack[pos].parent = stack[pos - 1]
             stack[pos - 1].children.push(stack[pos])
@@ -166,9 +170,7 @@ export default function Parse(html) {
     function handleStartTag(match) {
         let name = match.tagName
         let unary = match.unarySlash
-
         let [attrs,attrsMap] = parseAttrs(match.attrs)
-
         let currentAst = {
             tagName: name,
             attrs: attrs,
@@ -177,7 +179,7 @@ export default function Parse(html) {
         }
 
         if(!root){root = currentAst}
-        if (!unary && name !== "input") { //非闭合标签或者input直接入栈
+        if (!unary && name !== "input" && name !== "img") { //非闭合标签或者input直接入栈
             stack.push(currentAst)
         }
         else { //闭合直接加入父元素

@@ -2,19 +2,19 @@ let template = `
 <ul class="pagination">
 <li s-if="currentPage > 1"  class="page-item" @click="prePage">
     < </li>
-<li s-for="num in showList" @click="changePage(num)" class="page-item" :class="num === currentPage ? 'active':''">
+<li s-for="num in showList" @click="changePage(num)" :key="num" class="page-item" :class="num === currentPage ? 'active':''">
 {{num}}
 </li>
 <li s-if="currentPage < maxPage"  class="page-item" @click="nextPage">
     >
 </li>
-<p style="line-height: 32px;margin: 0;padding: 0;">共 {{maxPage}}页</p>
+<p s-if="total>0" style="line-height: 32px;margin: 0;padding: 0;">共 {{maxPage}}页</p>
 </ul>
 `
-export default {
+export default Sact.component({
     template,
-    data(){
-        return{
+    data() {
+        return {
             showList: [1, 2, 3, 4, 5],
             currentPage: 1,
             total: 12,
@@ -65,11 +65,9 @@ export default {
     },
     beforeMount() {
         this.data.total = this.props.total;
-        this.data.maxPage = parseInt(this.props.total / this.props.limit)
         this.data.currentPage = this.props.currentPage;
         this.data.limit = this.props.limit;
-    },
-    mounted() {
+        this.data.maxPage = parseInt(this.props.total / this.props.limit) || 1
         this.draw();
     },
     props: {
@@ -78,4 +76,4 @@ export default {
         limit: 12,
         showNum: 5,//默认展示多少个页码
     }
-}
+})
