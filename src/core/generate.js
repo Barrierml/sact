@@ -99,11 +99,11 @@ function genData(ast) {
             name = name.replace(/^@|^s-on:|^s@/, '');
             addHandler(events, name, value, modifiers);
         }
-        else if (/^s-modal/.test(name)) {
+        else if (/^s-model/.test(name)) {
             const modifiers = parseModifiers(name);  // 事件修饰符（.lazy/.trim./number）
             name = removeModifiers(name);
             hasEvents = true;
-            name = name.replace(/^s-modal/, '');
+            name = name.replace(/^s-model/, '');
             let bindName =  addModaler(events, ast.tagName, value, modifiers);
             hasProps = true;
             props += `"${bindName}": (${value}),`;
