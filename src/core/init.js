@@ -54,7 +54,7 @@ function initElement(sact) {
     //单实例模式
     else if (el) {
         sact.$ele = getRealDom(el);
-        template = sact.$ele.outerHTML;
+        template = template || sact.$ele.outerHTML;
         if (store) {
             sact.$store = store;
         }

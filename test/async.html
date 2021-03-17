@@ -23,12 +23,17 @@
 </style>
 
 <body>
-    <div class="topLand">
-
+    <div id="root" class="topLand">
+123{{qq}}
     </div>
 </body>
-<script src="../dist/sact.js"></script>
 <script type="module">
-
+    import Sact from "../src/sact.js";
+    new Sact({
+        el:"#root",
+        data:{
+            qq:123
+        }
+    })
 </script>
 </html>
