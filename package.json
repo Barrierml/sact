@@ -1,6 +1,6 @@
 {
   "name": "sact",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "this is a MVVM JavaScript framework that use Proxy to reactive data, like Vue3",
   "main": "./src/main.js",
   "scripts": {

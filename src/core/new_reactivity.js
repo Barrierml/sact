@@ -1,11 +1,12 @@
-import { isObj, hasOwn } from "../tools/untils.js";
+import { isObj, hasOwn, isIntegerKey, isArray, isMap } from "../tools/untils.js";
 import { queueJob } from "./scheduler.js";
 
 //watch 就是一个单纯的
 
 
 //重构的reactive
-
+const ITERATE_KEY = Symbol('')
+const MAP_KEY_ITERATE_KEY = Symbol('')
 let effectId = 0;
 //effect的栈
 const effectStack = [];
@@ -146,6 +147,23 @@ export function trigger(target, type, key, newValue, oldValue) {
     if (key !== void 0) {
         add(depsMap.get(key))
     }
+
+    switch (type) {
+        case setType.ADD:
+          if (!isArray(target)) {
+            add(depsMap.get(ITERATE_KEY))
+          } else if (isIntegerKey(key)) {
+            // new index added to array -> length changes
+            add(depsMap.get('length'))
+          }
+          break
+        case setType.DELETE:
+          if (!isArray(target)) {
+            add(depsMap.get(ITERATE_KEY))
+          }
+          break
+      }
+
 
     const run = (effect) => {
         let job = () => { };

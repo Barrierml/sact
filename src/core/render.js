@@ -386,22 +386,26 @@ function parsePropsData(Ctor, data) {
     let propsCheck = Ctor.$propsCheck;
     let res = {};
     for (let i of Reflect.ownKeys(data)) {
-        let attrs = data[i];
-        for (let key of Reflect.ownKeys(attrs)) {
-            let attr = attrs[key];
-            key = toCamelCase(key)
-            props[key] = attr;
+        for (let i of Reflect.ownKeys(data)) {
+            let attrs = data[i];
+            if (isObj(attrs)) {
+                for (let key of Reflect.ownKeys(attrs)) {
+                    let attr = attrs[key];
+                    key = toCamelCase(key)
+                    props[key] = attr;
 
-            //style 与 class除外
-            if (key === "style" || key === "class") {
-                res[key] = attr;
+                    //style 与 class除外
+                    if (key === "style" || key === "class") {
+                        res[key] = attr;
+                    }
+                }
             }
         }
     }
     if (propsCheck) {
         for (let prop of Reflect.ownKeys(propsCheck)) {
             let checker = propsCheck[prop];
-            res[prop] = checkProps(checker, props[prop], prop,Ctor.name)
+            res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
     else {
@@ -414,60 +418,60 @@ function parsePropsData(Ctor, data) {
 }
 
 //检查props正确性
-function checkProps(checker, attr, key,cname) {
+function checkProps(checker, attr, key, cname) {
     let { type, validator, required } = checker;
 
     //先判断是否为必须
-    if(required && attr === undefined){
-        throw new Error(`\n[Sact-warn]:this component '${cname}',`+
-                        `it's prop [${key}] is required ,`+
-                        `but it was not feeded in a availalbe value,`+
-                        `please check this!`
-                        )
+    if (required && attr === undefined) {
+        throw new Error(`\n[Sact-warn]:this component '${cname}',` +
+            `it's prop [${key}] is required ,` +
+            `but it was not feeded in a availalbe value,` +
+            `please check this!`
+        )
     }
 
     //自定义检查函数
-    if(isFunc(validator) && validator(attr)){
+    if (isFunc(validator) && validator(attr)) {
         return attr;
     }
 
     //正常类型检查
     let type_error = `\n[Sact-warn]:this component '${cname}', it's prop [${key}] should be '${String(type)}',but it was feeded in '${typeof attr}',please check this!`
     if (isString(type)) {
-        if(type === "any"){
+        if (type === "any") {
             return attr;
         }
-        if(typeof attr !== type){
+        if (typeof attr !== type) {
             throw new TypeError(type_error)
         }
-        else{
+        else {
             return attr;
         }
     }
-    else if(isFunc(type)){
-        if(attr instanceof type){
+    else if (isFunc(type)) {
+        if (attr instanceof type) {
             return attr;
         }
-        else{
+        else {
             throw new TypeError(type_error)
         }
     }
-    else if(isArray(type)){
-        for(let t of type){
-            if(isString(t)){
-                if(typeof attr === t){
+    else if (isArray(type)) {
+        for (let t of type) {
+            if (isString(t)) {
+                if (typeof attr === t) {
                     return attr;
-                } 
+                }
             }
-            else if(isFunc(t)){
-                if(attr instanceof t){
+            else if (isFunc(t)) {
+                if (attr instanceof t) {
                     return attr;
                 }
             }
         }
         throw new TypeError(type_error)
     }
-    else{
+    else {
         throw new Error(`[Sact-warn]:this component '${cname}', invalidated type '${type}'`)
     }
 }

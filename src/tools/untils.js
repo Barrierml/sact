@@ -56,7 +56,7 @@ export function cloneStaticObj(obj) {
 
 
 export const remove = (arr, el) => {
-    if(!isArray(arr)){
+    if (!isArray(arr)) {
         return;
     }
     const i = arr.indexOf(el)
@@ -101,3 +101,9 @@ export const isDate = (val) => val instanceof Date
 export const objectToString = Object.prototype.toString
 export const toTypeString = (value) => objectToString.call(value)
 export const isPromise = (val) => isObj(val) && isFunc(val.then) && isFunc(val.catch)
+
+export const isIntegerKey = (key) =>
+    isString(key) &&
+    key !== 'NaN' &&
+    key[0] !== '-' &&
+    '' + parseInt(key, 10) === key

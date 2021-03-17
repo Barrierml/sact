@@ -24,17 +24,16 @@
 
 <body>
     <div id="root" class="topLand">
-123{{qq}}
+        <p s-for="q in qq">{{q.toString()}}</p>
     </div>
 </body>
 <script type="module">
     import Sact from "../src/sact.js";
-    new Sact({
+    window.qq =  new Sact({
         el:"#root",
         data:{
-            qq:123
+            qq:[1,2,3]
         },
-        template:"<div>哈哈哈</div>"
     })
 </script>
 </html>
