@@ -1,37 +1,100 @@
-import { isObj } from "../tools/untils.js";
+import { isArray, isFunc, isObj, isSet, isString } from "../tools/untils.js";
 import Parse from "./Parser.js";
 import Generate from "./generate.js";
-import { reactivate, openTick, resetTick } from "./reactivity.js";
+import { effect, reactive, recordInstanceBoundEffect } from "./new_reactivity.js";
 import { createVnode, createFor } from "./vnode.js";
+import Sact from "../sact.js"
+import { patch } from "./render.js";
 
-export default function initAll(sact, options) {
-    sact.$options = options;
-    initWhen(sact);
-    sact.callHooks("beforeCreate");
-    initProps(sact);
-    initElement(sact);
-    initMethod(sact);
-    initData(sact);
-    initComponent(sact);
-    initRender(sact);
-    sact.callHooks("created");
-    initPlug(sact);
+let cid = 0;
+export default function initAll(options) {
+    this.$options = options;
+    initWhen(this);
+    this.callHooks("beforeCreate");
+    initElement(this);
+    initProps(this);
+    initMethod(this);
+    initData(this);
+    initComponent(this);
+    this.callHooks("created");
+    if (this._isStore) {
+        initStore(this);
+    }
+    else {
+        initRender(this);
+        initPatch(this);
+    }
 }
 
 //初始化对象
 function initElement(sact) {
-    const options = sact.$options;
-    if (options.ele) {
-        sact.$ele = document.querySelector(options.ele);
-        if(!sact.$ele && !sact.isComponent){
-            throw new Error(`无效ele ${options.ele}`);
+
+    sact._mounted = false;
+    sact._isStore = false;
+    sact._shouldMount = true;
+    sact.uid = cid++;
+
+    const el = sact.$options.el || sact.$options.ele;
+    let { store, template, component } = sact.$options;
+    //仓库模式
+    if (isStore(el)) {
+
+        let baseList = traverse(el);
+        sact._isStore = true;
+        sact._goods = [];
+
+        baseList.forEach((good) => {
+            sact._goods.push({
+                el: good,
+                store: sact,
+                component,
+            })
+        })
+    }
+    //单实例模式
+    else if (el) {
+        sact.$ele = getRealDom(el);
+        template = sact.$ele.outerHTML;
+        if (store) {
+            sact.$store = store;
         }
-        sact.$template = sact.$ele.outerHTML;
+
     }
-    if (options.template) {
-        sact.$template = options.template;
-    }
+    sact.$template = template;
 }
+
+//判断绑定的元素是否是仓库模式
+function isStore(el) {
+    return (isArray(el) || el instanceof NodeList)
+}
+
+function getRealDom(el) {
+    if (el instanceof Element || el instanceof Node) {
+        return el;
+    }
+    else if (isString(el)) {
+        return document.querySelector(el)
+    }
+    throw new Error(`[Sact-warn]:${el} 在页面内找不到真实元素！`)
+}
+//将内置的列表全部合并到一个列表内
+function traverse(value, seen = new Set()) {
+    if (isArray(value) || value instanceof NodeList) {
+        for (let i = 0; i < value.length; i++) {
+            traverse(value[i], seen)
+        }
+    } else if (isSet(value)) {
+        value.forEach((v) => {
+            traverse(v, seen)
+        })
+    } else {
+        if (!seen.has(value)) {
+            seen.add(value);
+        }
+    }
+    return seen;
+}
+
 
 //初始化数据
 function initData(sact) {
@@ -39,12 +102,18 @@ function initData(sact) {
     let data = options.data;
     if (options.data && typeof options.data === "function") {
         data = data.apply(sact);
+        if (!isObj(data)) {
+            throw new Error("[Sact-warn]:data返回的必须是一个对象！")
+        }
     }
     if (options.reactive === false) {
         sact.data = data;
     }
+    else if (data) {
+        sact.data = reactive(data);
+    }
     else {
-        sact.data = reactivate(sact, data || {});
+        sact.data = {};
     }
 }
 
@@ -60,8 +129,9 @@ function initMethod(sact) {
             sact[funName] = options.method[funName].bind(sact);
         };
     }
+    sact.effects = [];
     sact._c_ = (a, b, c, zid) => createVnode(sact, a, b, c, zid);
-    sact._f_ = (i, f) => createFor(i, f)
+    sact._f_ = (i, f) => createFor(i, f);
 }
 
 
@@ -74,16 +144,14 @@ function initComponent(sact) {
         sact.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
         sact.isShowAttr = options.isShowAttr || true; //默认显示属性在组件上
+        sact._shouldMount = false;
     }
-    sact.componentList = [];
+    sact.components = {};
     if (isObj(component)) { //使用组件时,将组件添加到环境中
         for (let con of Reflect.ownKeys(component)) {
-            sact.componentList.push(con);
+            sact.components[component[con].sname] = component[con];
         }
     }
-    sact.components = component || {};
-    //每个sact赋予一个新的cid
-    sact.cid = Number.parseInt(Math.random() * 100);
 }
 
 //初始化渲染功能
@@ -94,13 +162,13 @@ function initRender(sact) {
         sact._render = () => null
     }
     else {
-        if(sact.$template){
+        if (sact.$template) {
             sact.$createVnode = Generate(Parse(sact.$template))
-            sact._render = () => sact.$createVnode.apply(sact);
+            sact._render = () => sact.$createVnode(sact);
         }
-        else{
-            sact._render = null;
-            throw Error("请填写有效的模板字段！")
+        else {
+            console.warn("[Sact-warn]:not available template!", options);
+            throw new Error("模板不存在，请检查你是否传入有效的template参数！")
         }
     }
 
@@ -115,15 +183,87 @@ function initRender(sact) {
 
 //初始化继承
 function initProps(sact) {
+    /**
+    示例props
+    props: {
+    // 基础的类型检查 (`null` 和 `undefined` 会通过任何类型验证)
+    propA: Number,
+    // 多个可能的类型
+    propB: [String, Number],
+    // 必填的字符串
+    propC: {
+      type: String,
+      required: true
+    },
+    // 带有默认值的数字
+    propD: {
+      type: Number,
+      default: 100
+    },
+    // 带有默认值的对象
+    propE: {
+      type: Object,
+      // 对象或数组默认值必须从一个工厂函数获取
+      default: function () {
+        return { message: 'hello' }
+      }
+    },
+    // 自定义验证函数
+    propF: {
+      validator: function (value) {
+        // 这个值必须匹配下列字符串中的一个
+        return ['success', 'warning', 'danger'].indexOf(value) !== -1
+      }
+    }
+  }
+     */
     const options = sact.$options;
     let { props } = options;
-    if (typeof props === "function") {
-        sact.props = props();
+    if(!props){
+        return;
     }
-    else if (props) {
-        sact.props = props;
+    let res = {};
+    if (isFunc(props)) {
+        props = props.call(sact);
     }
+    if (isArray(props)) {
+        props.forEach((key) => {
+            res[key] = {
+                type:"any",
+            };
+        })
+    }
+    else if (isObj(props)) {
+        for (let key in props) {
+            res[key] = createProps(props[key]);
+        }
+    }
+    else {
+        console.warn("[Sact-warn]:please check your props, It's not a Array or Object", props);
+        throw new Error("请输入正确的props选项，支持Array与Obj类型!")
+    }
+    sact.$propsCheck = res;
 }
+
+
+function createProps(obj) {
+    let res = {
+        type: "any",  //类型，可以为列表
+        default: undefined, //默认值
+        validator: null, //验证函数，要返回true或false
+        required: false,  //默认需要
+    }
+    if (isObj(obj)) {
+        res = obj;
+    }
+    else {
+        res.type = obj;
+    }
+    return res;
+}
+
+
+
 
 //初始化生命周期
 function initWhen(sact) {
@@ -131,39 +271,74 @@ function initWhen(sact) {
      * 目前支持的周期函数
      * beforeCreate 刚刚实例化 data，method都还无法调用
      * created  已经创建 data，method可以调用，还未生成虚拟vnode
-     * beforeMount  挂载之前 这时虚拟vnode已经生成了，还未开始生成真实dom，可以通过$vnode查看虚拟vnode
+     * beforeMount  挂载之前 这时虚拟vnode尚未生成
      * mounted  装载后 这时实例已经开始正常运行了，所有属性都可以访问了
      * shouldUpdate（oldProps，newProps）传入老的props和新的props，可以自行根据返回值来判断更新
      * beforeUpdate 数据更新前，这时数据已经修改完毕，但是尚未更新
      * updated  数据更新完毕了，这时真实dom已经修改过了
      * beforeDestory  （仅限组件）删除前，要删除实例时，会先调用这个方法，此时所有数据均可以访问
-     * destroyed （仅限组件）删除后，已经删除完毕，数据均已解绑
+     * destroyed （仅限组件）删除后，已经删除完毕，响应式数据均已解绑
      */
     const opts = sact.$options;
     sact.callHooks = function (fnName) {
+
         let fn = opts[fnName];
         let type = typeof fn;
+
         if (fnName === "shouldUpdate") {
-            return function (o,v) {
+
+            return function (o, v) {
+
                 if (fn && type === "function") {
                     return fn.apply(sact, [o, v]);
                 }
+
                 return true;
             }
         }
         else if (fn && type === "function") {
+
             return fn.apply(sact);
         }
     }
 }
 
-function initPlug(sact) {
-    let plugList = sact.getplug();
-    if (plugList) {
-        for (let p of plugList) {
-            openTick();
-            p.install && p.install.call(p, sact);
-            resetTick();
+function initPatch(sact) {
+
+    let job = function () {
+
+        if (!this.isComponent) {
+            this.callHooks("beforeUpdate");
         }
+
+        let oldVnode = this.$vnode;
+        this.$vnode = this._render(this.props);
+
+        if (this.$vnode) {
+            this.$vnode.warpSact = this;
+        }
+
+        patch(oldVnode, this.$vnode, this.$ele);
+
+        this.callHooks("updated");
     }
+
+    sact.patch = effect(job.bind(sact), {
+        lazy: true
+    });
+
+    recordInstanceBoundEffect(sact.patch, sact);
+
+    if (sact._shouldMount) {
+        sact._mounted = true;
+        sact.patch();
+        sact._shouldMount = false;
+    }
+}
+
+//初始化仓库
+function initStore(sact) {
+    sact._goods = sact._goods.map((opts) => {
+        return new Sact(opts)
+    })
 }

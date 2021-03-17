@@ -1,5 +1,5 @@
 const baseTypeList = [
-    "boolean","number","string","symbol","undefined"
+    "boolean", "number", "string", "symbol", "undefined"
 ]
 //获取属性并删除
 export function getAndRemoveAttr(el, attr) {
@@ -16,17 +16,17 @@ export function getAndRemoveAttr(el, attr) {
     return val;
 }
 //判断对象是否是基础类型
-export function isBaseType(obj){
+export function isBaseType(obj) {
     let t = typeof obj
     return baseTypeList.includes(t);
 }
 
-export function isObj(obj){
+export function isObj(obj) {
     return obj && typeof (obj) === "object" && obj !== null
 }
 //扩展对象属性
 export function extend(obj, res) {
-    if(!isObj(res)){
+    if (!isObj(res)) {
         return obj;
     }
     for (let i of Reflect.ownKeys(res)) {
@@ -55,6 +55,16 @@ export function cloneStaticObj(obj) {
 }
 
 
+export const remove = (arr, el) => {
+    if(!isArray(arr)){
+        return;
+    }
+    const i = arr.indexOf(el)
+    if (i > -1) {
+        arr.splice(i, 1)
+    }
+}
+
 //获取循环获取数据
 export function getDataInData(VName, data) {
     let p = VName.split(".");
@@ -70,7 +80,7 @@ export function getDataInData(VName, data) {
 
 const leftAttrsTag = "{{"
 const rightAttrsTag = "}}"
-export const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&]+)\\s*${rightAttrsTag}`)
+export const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&_$]+)\\s*${rightAttrsTag}`)
 //判断含有为动态变量并返getDynamicName回变量名 出现的位置 和最后的位置
 export function getDynamicName(str) {
     let res = AttrsTag.exec(str)
@@ -79,3 +89,15 @@ export function getDynamicName(str) {
     }
     return [];
 }
+
+export const isArray = Array.isArray;
+export const isString = (val) => typeof val === "string";
+export const isNum = (val) => typeof val === "number";
+export const hasOwn = (val, key) => Reflect.has(val, key)
+export const isFunc = (val) => typeof val === "function";
+export const isMap = (val) => toTypeString(val) === '[object Map]'
+export const isSet = (val) => toTypeString(val) === '[object Set]'
+export const isDate = (val) => val instanceof Date
+export const objectToString = Object.prototype.toString
+export const toTypeString = (value) => objectToString.call(value)
+export const isPromise = (val) => isObj(val) && isFunc(val.then) && isFunc(val.catch)

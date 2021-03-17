@@ -1,74 +1,38 @@
-//自制的简易MVVM框架(主要借鉴的vue)
-
-
+//自制的简易MVVM框架(主要借鉴的vue和react)
 import initAll from "./core/init.js";
-import render, { _patch } from "./core/render.js";
-import { clearDep } from "./core/reactivity.js"
+import { stop } from "./core/new_reactivity.js";
 import { extend } from "./tools/untils.js";
 
-const pluginList = [];
 export default class Sact {
-  //使用的插件
   constructor(options) {
-    this.$ele = undefined;
-    initAll(this, options);
-    //首次渲染
-    !this.isComponent && this.render();
+    this._init = initAll;
+    this._init(options);
   }
-
-  getplug() {
-    return pluginList;
-  }
-
-  render() {
-    this.callHooks("beforeMount");
-    if(this.render){
-      this.$vnode = this._render();
-      render(this.$vnode, this.$ele);
-      this.callHooks("mounted");
-    }
-    else{
-      throw new Error("渲染函数无效,请检查您输入的参数，是否存在有效的ele或者template",this.$options);
-    }
-  }
-
-  patch() {
-    if (!this.isComponent) {
-      this.callHooks("beforeUpdate");
-    }
-    let oldVnode = this.$vnode;
-    this.$vnode = this._render(this.props);
-    if (this.$vnode) {
-      this.$vnode.warpSact = this;
-    }
-    _patch(oldVnode, this.$vnode);
-    this.callHooks("updated");
-  }
-
-
-  notify() {
-    this.patch();
-  }
-
   destory() {
     this.callHooks("beforeDestory");
-    clearDep(this);
+    this.effects.forEach(v => {
+      stop(v);
+    });
+    this.effects.length = 0;
   }
+
+
 }
-Sact.__proto__.component = function (options) {
-  return function () { return new Sact({ ...options, isComponent: true }) }
+Sact.version = "0.1.1";
+
+Sact.component = function (options) {
+  if(!options.name){
+    throw new Error("[Sact-warn]:you must set a name for component!")
+  }
+  let Ctor = function () { return new Sact({ ...options, isComponent: true }) }
+  Ctor.sname = options.name;
+  return Ctor;
 }
 
-Sact.__proto__.use = function (plugin) {
-  pluginList.push(plugin);
-}
-
-
-
-Sact.__proto__.link = function () {
+Sact.link = function () {
   const setting = {};
   const _get = function (target, key, receiver) {
-    if(key === "do"){
+    if (key === "do") {
       return new Sact(setting);
     }
     return function (value) {

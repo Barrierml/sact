@@ -4,14 +4,24 @@ import { getAndRemoveAttr, getDynamicName, AttrsTag } from "../tools/untils.js"
 let zid = 0;
 const simplePathRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/
 
-
+//返回一个由ast树生成的render函数
 export default function generate(ast) {
     const code = genElement(ast);
-    return new Function(`with(this){
-        with(data){
-             return ${code}
+    return (ctx) =>{
+        try{
+            return new Function(`with(this){
+                with(data){
+                     return ${code}
+                }
+            }`).call(ctx)
         }
-    }`)
+        catch(e){
+            if(e instanceof TypeError){
+                console.warn("[Sact-warn]:Cannot read property of undefined, please check props\n",ctx);
+                throw new Error("请确定你声明了正确的变量")
+            }
+        }
+    }
 }
 
 function genElement(ast) {

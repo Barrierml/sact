@@ -1,38 +1,60 @@
 import dom from "../api/runtime-dom.js";
-import { openTick, resetTick } from "./reactivity.js"
-import { extend, isObj } from "../tools/untils.js"
+import { extend, isArray, isFunc, isObj, isString } from "../tools/untils.js"
 
 
-
-export default function render(vnode, container) {
+function render(vnode, container) {
     if (container) { //覆盖渲染
+        vnode.context.callHooks("beforeMount");
         let rel;
         rel = renElement(vnode);
         dom.replace(container, rel);
+        vnode.context.$ele = rel;
+        vnode.context.callHooks("mounted");
     }
     else { //出现这种情况只能是自定义render之前是空，现在有渲染结果了
         let warp = vnode.warpSact.wrapVnode;
-        let parentEle = warp.getParentEle();
-        let rel = vnode.element || renElement(vnode);
-        let index = warp.parent.children.indexOf(warp) - 1;
-        let achor = warp.parent.children[index].element;
-        dom.insert(rel, parentEle, dom.next(achor));
+        if (warp) {
+            let parentEle = warp.getParentEle();
+            let rel = vnode.element || renElement(vnode);
+            let index = warp.parent.children.indexOf(warp) - 1;
+            let achor = warp.parent.children[index].element;
+            dom.insert(rel, parentEle, dom.next(achor));
+        }
+        else {
+            console.warn("[Sact-warn]:", vnode);
+            throw new Error("渲染vnode错误！没有真实元素存在！")
+        }
     }
 }
 
-
-export function _patch(v1, v2) {
+/**
+ * 传入vnode进行渲染或者patch
+ * @param {*} v1 原来的vnode
+ * @param {*} v2 新的vnode
+ * @param {*} container element容器
+ * @returns 
+ */
+export function patch(v1, v2, container) {
     if (v1 === v2) {
         return;
     }
     else if (v1 && !v2) {
         destroryVnode(v1);
     }
-    else if (sameNode(v1, v2)) {
+    else if (v1 && v2 && sameNode(v1, v2)) {
         patchVnode(v1, v2);
     }
+    //实例第一次生成
+    else if (!v1 && v2 && container instanceof Element) {
+        render(v2, container);
+    }
+    //组件第一次创建
+    else if (!v1 && v2 && !container) {
+        v2.context.$ele = renElement(v2);
+    }
     else {
-        render(v2, v1.element);
+        console.warn("[Sact-warn]:not aivailable Vnode", v1, v2);
+        throw new Error(`[Sact-error]:arguments error，please check！`)
     }
 }
 
@@ -92,10 +114,10 @@ function patchCompent(v1, v2) {
     let newValue = [Ctor.$slot, Ctor.props]
     Ctor.callHooks("beforeUpdate");
     //shouldUpate
-    if (Ctor.callHooks("shouldUpdate")(oldValue[1],newValue[1])) {
+    if (Ctor.callHooks("shouldUpdate")(oldValue[1], newValue[1])) {
         if (shouldPacthComponent(oldValue, newValue)) {
             Ctor.patch();
-            setAttrs(Ctor.$ele,Ctor.props,Ctor);
+            setAttrs(Ctor.$ele, Ctor.props, Ctor);
         }
     }
 }
@@ -271,7 +293,8 @@ function renElement(vnode) {
     }
     //组件
     if (vnode.componentOptions) {
-        return renComponent(vnode, vnode.componentOptions);
+        vnode.element = renComponent(vnode, vnode.componentOptions)
+        return vnode.element;
     }
     //正常元素
     let { tag, data, children, key } = vnode;
@@ -291,26 +314,38 @@ function renElement(vnode) {
 function renComponent(vnode, option) {
     let { Ctor, children } = option;
     let { key, data } = vnode;
+
     //渲染的时候再实例化Ctor;
     //这样可以减少很大一部分的内存占用
     Ctor = option.Ctor = Ctor();
     Ctor.wrapVnode = vnode;
+
+    //传入store
+    if (vnode.context.$store) {
+        Ctor.$store = vnode.context.$store;
+    }
+
     //传入props和插槽
     let props = parsePropsData(Ctor, data);
     Ctor.$slot = renSlot(children);
+
     //开始渲染
     let ele = null;
+
     Ctor.callHooks("beforeMount");
-    let node = Ctor.$vnode = Ctor._render(props);
-    if (node) {
-        ele = Ctor.$ele = Ctor.$vnode.element = vnode.element = renElement(node);
-        if (Ctor.isShowAttr) {
-            setAttrs(ele, props, Ctor);
-        }
-        if (key) {
-            dom.setAttribute(ele, "key", key);
-        }
+    Ctor.patch();
+    Ctor._mounted = true;
+
+    ele = Ctor.$ele;
+
+    if (Ctor.isShowAttr) {
+        setAttrs(ele, props, Ctor);
     }
+
+    if (key) {
+        dom.setAttribute(ele, "key", key);
+    }
+
     Ctor.callHooks("mounted");
     return ele;
 }
@@ -328,22 +363,116 @@ function renSlot(children) {
     return res;
 }
 
+
+//转换变量名
+function toCamelCase(name) {
+    let l = name.split("-");
+    if (l.length > 1) {
+        let res = l[0];
+        for (let i = 1; i < l.length; i++) {
+            res += l[i].slice(0, 1).toUpperCase() + l[i].slice(1)
+        }
+        return res;
+    }
+    else {
+        return name;
+    }
+}
 //传入父组件的参数
 function parsePropsData(Ctor, data) {
-    let Cprops = Ctor.props;
-    let res = extend({}, Cprops);
-    let { attrs, on, props } = data;
-    for (let i of [attrs, on, props]) {
-        if (isObj(i)) {
-            for (let j of Reflect.ownKeys(i)) {
-                //如果原来的props存在并且是函数的情况下传入新参数
-                res[j] = i[j]
+
+    //装载并检查props
+    let props = {};
+    let propsCheck = Ctor.$propsCheck;
+    let res = {};
+    for (let i of Reflect.ownKeys(data)) {
+        let attrs = data[i];
+        for (let key of Reflect.ownKeys(attrs)) {
+            let attr = attrs[key];
+            key = toCamelCase(key)
+            props[key] = attr;
+
+            //style 与 class除外
+            if (key === "style" || key === "class") {
+                res[key] = attr;
             }
         }
     }
+    if (propsCheck) {
+        for (let prop of Reflect.ownKeys(propsCheck)) {
+            let checker = propsCheck[prop];
+            res[prop] = checkProps(checker, props[prop], prop,Ctor.name)
+        }
+    }
+    else {
+        console.warn(`[Sact-warn]:this component '${Ctor.name}' had not define props,
+                    but this component was feeded in some props '${props}',this props will be not available,
+                    beacuse those maybe will cause some wrong. we do not recommond`)
+    }
     Ctor.props = res;
-    return res;
+    return props;
 }
+
+//检查props正确性
+function checkProps(checker, attr, key,cname) {
+    let { type, validator, required } = checker;
+
+    //先判断是否为必须
+    if(required && attr === undefined){
+        throw new Error(`\n[Sact-warn]:this component '${cname}',`+
+                        `it's prop [${key}] is required ,`+
+                        `but it was not feeded in a availalbe value,`+
+                        `please check this!`
+                        )
+    }
+
+    //自定义检查函数
+    if(isFunc(validator) && validator(attr)){
+        return attr;
+    }
+
+    //正常类型检查
+    let type_error = `\n[Sact-warn]:this component '${cname}', it's prop [${key}] should be '${String(type)}',but it was feeded in '${typeof attr}',please check this!`
+    if (isString(type)) {
+        if(type === "any"){
+            return attr;
+        }
+        if(typeof attr !== type){
+            throw new TypeError(type_error)
+        }
+        else{
+            return attr;
+        }
+    }
+    else if(isFunc(type)){
+        if(attr instanceof type){
+            return attr;
+        }
+        else{
+            throw new TypeError(type_error)
+        }
+    }
+    else if(isArray(type)){
+        for(let t of type){
+            if(isString(t)){
+                if(typeof attr === t){
+                    return attr;
+                } 
+            }
+            else if(isFunc(t)){
+                if(attr instanceof t){
+                    return attr;
+                }
+            }
+        }
+        throw new TypeError(type_error)
+    }
+    else{
+        throw new Error(`[Sact-warn]:this component '${cname}', invalidated type '${type}'`)
+    }
+}
+
+
 
 function destroryVnode(vnode) {
     if (vnode.componentOptions) {
@@ -438,9 +567,7 @@ function bindLisenter(rel, lisenters) {
             if (typeof lisenters[key] !== "function") {
                 throw new Error(`${key} 不是一个合法的函数，请检查！`)
             }
-            openTick();
             lisenters[key](...arguments);
-            resetTick();
         };
         rel.addEventListener(key, handler)
     }

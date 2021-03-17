@@ -1,6 +1,6 @@
 
 
-class Vnode {
+export class Vnode {
     constructor(vm, a, b, c, d, istext, zid) {
 
         this.context = vm
@@ -30,8 +30,8 @@ class Vnode {
 
 
 export function createVnode(vm, a, b, c, zid) {
-    const { componentList, components } = vm;
-    if (componentList && componentList.includes(a)) { //当a是自定义组件时
+    const { components } = vm;
+    if (Reflect.ownKeys(components).indexOf(a) > -1) { //当a是自定义组件时
         return createComponent(components[a], b, vm, c, a, zid);
     }
     else if (a === "slot") {
@@ -42,7 +42,7 @@ export function createVnode(vm, a, b, c, zid) {
     }
 }
 
-function createComponent(Ctor, data, context, children, tag, zid) {
+export function createComponent(Ctor, data, context, children, tag, zid) {
     let vnode = new Vnode(context,
         ("sact-component-" + (zid) + "-" + tag),
         data, undefined, {
@@ -52,7 +52,7 @@ function createComponent(Ctor, data, context, children, tag, zid) {
     }, false, zid);
     return vnode
 }
-function createSolt(vm, data, children) {
+export function createSolt(vm, data, children) {
     if (vm.$slot) {
         let slotName = data.attrs && data.attrs.name;
         if (slotName) {

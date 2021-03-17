@@ -1,3 +1,5 @@
+import { isArray } from "../tools/untils.js"
+
 //将普通的html返回一个ast语法树
 const attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
 const dynamicArgAttribute = /^\s*((?:s-[\w-]+:|@|#)\[[^=]+?\][^\s"'<>\/=]*)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/
@@ -12,6 +14,9 @@ const conditionalComment = /^<!\[/
 
 
 function listToMap(list) {
+    if(!isArray(list)){
+        return null;
+    }
     let res = {};
     for (let i of list) {
         res[i.name] = i.value;
