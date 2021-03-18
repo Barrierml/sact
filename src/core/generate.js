@@ -7,18 +7,21 @@ const simplePathRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]
 //返回一个由ast树生成的render函数
 export default function generate(ast) {
     const code = genElement(ast);
-    return (ctx) =>{
-        try{
+    return (ctx) => {
+        try {
             return new Function(`with(this){
                 with(data){
                      return ${code}
                 }
             }`).call(ctx)
         }
-        catch(e){
-            if(e instanceof TypeError){
-                console.warn("[Sact-warn]:Cannot read property of undefined, please check props\n",ctx,e);
+        catch (e) {
+            if (e instanceof TypeError) {
+                console.warn("[Sact-warn]:Cannot read property of undefined, please check props\n", ctx, e);
                 throw new Error("请确定你声明了正确的变量")
+            }
+            else {
+                throw e;
             }
         }
     }
@@ -55,6 +58,7 @@ function genFor(ast, exp) {
     })`
 }
 
+
 function genIf(ast, exp) {
     return `(${exp}) ? ${genElement(ast)} : null`;
 }
@@ -64,13 +68,16 @@ function genData(ast) {
         return '{}';
     }
 
-    let data = "{";
-    let attrs = `attrs:{`;
+
     let events = {};
     let hasAttrs = false;
     let hasProps = false;
     let hasEvents = false;
-    let props = `props:{`
+    let hasStyle = false;
+    let style = `style:[`
+    let props = `props:{`;
+    let data = "{";
+    let attrs = `attrs:{`;
 
     const classBinding = getAndRemoveAttr(ast, 's:class') || getAndRemoveAttr(ast, 's-bind:class') || getAndRemoveAttr(ast, ':class');
     if (classBinding) {
@@ -81,6 +88,8 @@ function genData(ast) {
         data += `staticClass: "${staticClass}",`;
     }
 
+
+
     for (let i = 0, l = ast.attrs.length; i < l; i++) {
 
         let attr = ast.attrs[i];
@@ -90,7 +99,8 @@ function genData(ast) {
         if (/^s-bind:|^:|s:/.test(name)) {
             name = name.replace(/^:|^s-bind:|^s:/, '');
             if (name === 'style') {
-                data += `style: ${value},`;
+                style += `${value},`
+                hasStyle = true;
             }
             else if (name === 'key') {
                 data += `key: (${value}),`;
@@ -114,16 +124,33 @@ function genData(ast) {
             name = removeModifiers(name);
             hasEvents = true;
             name = name.replace(/^s-model/, '');
-            let bindName =  addModaler(events, ast.tagName, value, modifiers);
+            let bindName = addModaler(events, ast.tagName, value, modifiers);
             hasProps = true;
             props += `"${bindName}": (${value}),`;
         }
         else {
-            hasAttrs = true;
-            attrs += `"${name}": (${JSON.stringify(value)}),`;
+            if (name === "style") {
+                style += `${JSON.stringify(value)},`;
+                hasStyle = true;
+            }
+            else if(name !== "s-show"){
+                hasAttrs = true;
+                attrs += `"${name}": (${JSON.stringify(value)}),`;
+            }
         }
     }
 
+    let hasShow = getAndRemoveAttr(ast, "s-show");
+    if (hasShow) {
+        style += `{display:${hasShow} ? '' : 'none'},`;
+        props += `"sShow": true,`;
+        hasProps = true;
+        hasStyle = true;
+    }
+
+    if (hasStyle) {
+        data += style + '],';
+    }
     if (hasAttrs) {
         data += attrs.slice(0, -1) + '},';
     }
@@ -161,18 +188,18 @@ function addModaler(events, tagName, value, modifiers) {
             bindValue = "value";
             break;
     }
-    if(Array.isArray(modifiers)){
-        for(let i = 0;i<modifiers.length;i++){
-            if(modifiers[i] === "trim"){
+    if (Array.isArray(modifiers)) {
+        for (let i = 0; i < modifiers.length; i++) {
+            if (modifiers[i] === "trim") {
                 code += `_v_ = _v_.trim && _v_.trim();`
             }
-            else if(modifiers[i] === "number"){
+            else if (modifiers[i] === "number") {
                 code += `_v_ = parseInt(_v_) || _v_;`
             }
         }
     }
     code += `${value} = _v_;`;
-    events[handlerName] = {value:code};
+    events[handlerName] = { value: code };
     return bindValue;
 }
 function addHandler(events, name, value, modifiers) {
@@ -257,16 +284,16 @@ function parseText(text) {
     if (!AttrsTag.test(text)) {
         return null;
     }
-    let [exp,start,end] = getDynamicName(text);
+    let [exp, start, end] = getDynamicName(text);
     let res = [];
     while (exp) {
-        if(start !== 0){
-            res.push(`'${text.substring(0,start).trim()}'`);
+        if (start !== 0) {
+            res.push(`'${text.substring(0, start).trim()}'`);
         }
         res.push(`(${exp})`);
         text = text.substring(end);
-        [exp,start,end] = getDynamicName(text);
+        [exp, start, end] = getDynamicName(text);
     }
-    if(text){res.push(`'${text.trim()}'`)}
+    if (text) { res.push(`'${text.trim()}'`) }
     return res.join("+");
 }

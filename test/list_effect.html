@@ -13,27 +13,51 @@
         background-color: #34495e;
         margin: 0;
         padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
     }
-    .topLand{
-        position: fixed;
-        width: 100vw;
-        height: 100px;
-        background-color: #fff;
+    .content{
+        height: 400px;
+        width: 400px;
+        background-color: rgb(44, 235, 193);
+        border-radius: 4px;
+    }
+
+    .qq{
+        display: flex;
     }
 </style>
 
 <body>
-    <div id="root" class="topLand">
-        <p s-for="q in qq">{{q.toString()}}</p>
+    <div id="root" class="content">
+        <p class="qq" s-show="$store.data.show" :style="{display:'flex'}">123123123</p>
+        <p>{{$store.data.ww}}</p>
+        <button @click="$store.data.show = !$store.data.show">goog</button>
     </div>
 </body>
 <script type="module">
     import Sact from "../src/sact.js";
+    let qq = Sact.component({
+        name:"im-qq",
+        template:"<p>哈哈哈</p>",
+    })
     window.qq =  new Sact({
-        el:"#root",
+        el:[document.querySelectorAll("im-qq"),"#root"],
         data:{
-            qq:[1,2,3]
+            qq:[1,2,3],
+            show:false,
+            pci:"12323",
         },
+        computed:{
+            ww(){
+                return String(this.data.pci + "企鹅完全恶气");
+            }
+        },
+        component:{
+            qq,
+        }
     })
 </script>
 </html>

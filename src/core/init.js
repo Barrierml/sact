@@ -1,10 +1,11 @@
 import { isArray, isFunc, isObj, isSet, isString } from "../tools/untils.js";
 import Parse from "./Parser.js";
 import Generate from "./generate.js";
-import { effect, reactive, recordInstanceBoundEffect } from "./new_reactivity.js";
+import { effect, recordInstanceBoundEffect, withComputedReactive } from "./new_reactivity.js";
 import { createVnode, createFor } from "./vnode.js";
 import Sact from "../sact.js"
 import { patch } from "./render.js";
+import { computedNode } from "./computed.js"
 
 let cid = 0;
 export default function initAll(options) {
@@ -14,6 +15,7 @@ export default function initAll(options) {
     initElement(this);
     initProps(this);
     initMethod(this);
+    initComputed(this);
     initData(this);
     initComponent(this);
     this.callHooks("created");
@@ -96,6 +98,26 @@ function traverse(value, seen = new Set()) {
 }
 
 
+function initComputed(sact) {
+    let { computed } = sact.$options;
+
+    if (isObj(computed)) {
+        sact.$computed = {};
+        for (const key in computed) {
+            let fn = computed[key];
+            if (isFunc(fn)) {
+                sact.$computed[key] = new computedNode(key, fn, sact);
+            }
+            else {
+                throw new Error("[Sact-warn]:computed must is a function!")
+            }
+        }
+    }
+}
+
+
+
+
 //初始化数据
 function initData(sact) {
     const options = sact.$options;
@@ -110,11 +132,12 @@ function initData(sact) {
         sact.data = data;
     }
     else if (data) {
-        sact.data = reactive(data);
+        sact.data = withComputedReactive(data,sact.$computed);
     }
     else {
         sact.data = {};
     }
+    sact.$data = data;
 }
 
 //初始化方法
@@ -219,7 +242,7 @@ function initProps(sact) {
      */
     const options = sact.$options;
     let { props } = options;
-    if(!props){
+    if (!props) {
         return;
     }
     let res = {};
@@ -229,7 +252,7 @@ function initProps(sact) {
     if (isArray(props)) {
         props.forEach((key) => {
             res[key] = {
-                type:"any",
+                type: "any",
             };
         })
     }

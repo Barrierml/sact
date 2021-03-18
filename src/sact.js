@@ -18,7 +18,7 @@ export default class Sact {
 
 
 }
-Sact.version = "0.1.1";
+Sact.version = "0.1.3";
 
 Sact.component = function (options) {
   if(!options.name){

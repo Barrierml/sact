@@ -408,9 +408,9 @@ function parsePropsData(Ctor, data) {
             res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
-    else {
+    else if(Reflect.ownKeys(props).length > 0){
         console.warn(`[Sact-warn]:this component '${Ctor.name}' had not define props,
-                    but this component was feeded in some props '${props}',this props will be not available,
+                    but this component was feeded in some props '${Reflect.ownKeys(props)}',this props will be not available,
                     beacuse those maybe will cause some wrong. we do not recommond`)
     }
     Ctor.props = res;
@@ -538,12 +538,7 @@ function setStyle(rel, style) {
     let type = typeof style;
     if (Array.isArray(style)) {
         for (let i = 0; i < style.length; i++) {
-            if (typeof style[i] === "object") {
-                setStyle(rel, style[i]);
-            }
-            else {
-                throw new Error(`${i} 并不是一个对象！`);
-            }
+            setStyle(rel, style[i]);
         }
     }
     else if (type === "object") {
@@ -581,3 +576,9 @@ function setDomAttrs(rel, attrs) {
         dom.setAttribute(rel, i, attrs[i])
     }
 }
+
+//触发vnode的生命周期函数
+function callVnodeHooks(el,){
+
+}
+

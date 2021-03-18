@@ -6,7 +6,7 @@ import { queueJob } from "./scheduler.js";
 
 //重构的reactive
 const ITERATE_KEY = Symbol('')
-const MAP_KEY_ITERATE_KEY = Symbol('')
+
 let effectId = 0;
 //effect的栈
 const effectStack = [];
@@ -71,9 +71,6 @@ function createEffect(fn, opts) {
 export function stop(effect) {
     if (effect.active) {
         cleanup(effect)
-        if (effect.options.onStop) {
-            effect.options.onStop()
-        }
         effect.active = false
     }
 }
@@ -97,7 +94,6 @@ const dep = new WeakMap(); //收集依赖的weakMap
 
 //收集
 export function track(target, key) {
-
     if (activeEffect === undefined) {
         //不存在则不需要收集
         return;
@@ -150,19 +146,19 @@ export function trigger(target, type, key, newValue, oldValue) {
 
     switch (type) {
         case setType.ADD:
-          if (!isArray(target)) {
-            add(depsMap.get(ITERATE_KEY))
-          } else if (isIntegerKey(key)) {
-            // new index added to array -> length changes
-            add(depsMap.get('length'))
-          }
-          break
+            if (!isArray(target)) {
+                add(depsMap.get(ITERATE_KEY))
+            } else if (isIntegerKey(key)) {
+                // new index added to array -> length changes
+                add(depsMap.get('length'))
+            }
+            break
         case setType.DELETE:
-          if (!isArray(target)) {
-            add(depsMap.get(ITERATE_KEY))
-          }
-          break
-      }
+            if (!isArray(target)) {
+                add(depsMap.get(ITERATE_KEY))
+            }
+            break
+    }
 
 
     const run = (effect) => {
@@ -178,12 +174,17 @@ export function trigger(target, type, key, newValue, oldValue) {
             })
         }
         if (effect.opts.scheduler) {
-            job = () => effect.opts.scheduler(effect)
+            if(effect.opts.isComputed){
+                effect.opts.scheduler(effect);
+            }
+            else{
+                job = () => effect.opts.scheduler(effect)
+            }
         } else {
             job = () => effect()
         }
         job.id = effect.id;
-        queueJob(effect);
+        queueJob(job);
     }
     effects.forEach(run)
 }
@@ -198,13 +199,61 @@ export function recordInstanceBoundEffect(effect, instance) {
 // -----------------------------------------------------------------------
 const proxyMap = new WeakMap(); // 保存代理的原数据
 
+
+
+export function withComputedReactive(target, computeds) {
+    if (!isObj(target)) {
+        console.warn("[Sact-warn]:target must a object", target)
+        throw new Error("reactive 传入的参数必须是个对象！")
+    }
+    const existingProxy = proxyMap.get(target)
+    if (existingProxy) {
+        return existingProxy
+    }
+    //初始化全部computed
+    let proxy = new Proxy(target, {
+        get(target, key, reciver) {
+            if (computeds[key]) {
+                return computeds[key].value;
+            }
+            else {
+                return createGetter(target, key, reciver);
+            }
+        },
+        set(target, key, value, reciver) {
+            if (computeds[key]) {
+                computeds[key].value = value;
+                return true;
+            }
+            else {
+                return createSetter(target, key, value, reciver);
+            }
+        },
+        has(target,key){
+            if (computeds[key]) {
+                return true;
+            }
+            else {
+                return Reflect.has(target,key);
+            }
+        }
+    })
+    proxyMap.set(target, proxy)
+    return proxy;
+}
+
+
+
+
+
+
 /**
  * 将数据响应化
  * @param {*} data 
  */
 export function reactive(target) {
     if (!isObj(target)) {
-        console.warn("[Sact-warn]:target must a object",target)
+        console.warn("[Sact-warn]:target must a object", target)
         throw new Error("reactive 传入的参数必须是个对象！")
     }
     const existingProxy = proxyMap.get(target)
@@ -233,7 +282,7 @@ function createGetter(target, key, reciver) {
 
 
 
-const setType = {
+export const setType = {
     SET: 1,
     ADD: 1 << 1,
     DELETE: 1 << 2,
