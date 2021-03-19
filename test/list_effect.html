@@ -32,27 +32,43 @@
 
 <body>
     <div id="root" class="content">
-        <p class="qq" s-show="$store.data.show" :style="{display:'flex'}">123123123</p>
-        <p>{{$store.data.ww}}</p>
-        <button @click="$store.data.show = !$store.data.show">goog</button>
+        <p class="qq" s-show="show" :style="{display:'flex'}">123123123</p>
+        <p :style="{[ww]:'red'}">{{pci}}</p>
+        <p s-for="ss in qq">{{ss}}</p>
+        <form>
+            <select s-model:value="pci">
+                <option s-model:selected="show" value="苹果">苹果</option>
+                <option value="香蕉">香蕉</option>
+                <option value="栗子">栗子</option>
+            </select>
+            <input type="checkbox" s-model:checked="show"/>
+            <im-qq></im-qq>
+        </form>
     </div>
 </body>
 <script type="module">
     import Sact from "../src/sact.js";
     let qq = Sact.component({
         name:"im-qq",
-        template:"<p>哈哈哈</p>",
+        template:"<div>{{props.text}}<input s-model:value='props.text'/></div>",
+        props:["text"]
     })
     window.qq =  new Sact({
-        el:[document.querySelectorAll("im-qq"),"#root"],
+        el:"#root",
         data:{
             qq:[1,2,3],
             show:false,
             pci:"12323",
+            st:"color",
         },
         computed:{
             ww(){
-                return String(this.data.pci + "企鹅完全恶气");
+                if(this.data.show){
+                    return "color"
+                }
+                else{
+                    return "background-color"
+                }
             }
         },
         component:{

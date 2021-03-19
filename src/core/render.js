@@ -67,6 +67,9 @@ function patchVnode(v1, v2) {
     else if (v1.componentOptions && v2.componentOptions) {
         patchCompent(v1, v2);
     }
+    else if(v2.type === 1){
+        return;
+    }
     else {
         patchAttrs(v1, v2);
         prePatchChildren(v1.children, v2.children, v1.element);
@@ -154,9 +157,7 @@ function patchAttrs(v1, v2) {
     else if (!sameAttrs(d1, d2, "staticClass")) {
         dom.setAttribute(v1.element, "class", d2["staticClass"])
     }
-    if (!sameAttrs(d1, d2, "style")) {
-        setStyle(v1.element, d2["style"]);
-    }
+    constrast(d1.style, d2.style, "style", v1.element)
     constrast(d1.attrs, d2.attrs, "attrs", v1.element)
     constrast(d1.props, d2.props, "props", v1.element)
     constrast(d1.on, d2.on, "on", v1.element);
@@ -249,6 +250,9 @@ function constrast(la, na, key, rel) {
                 else if (key === "on") {
                     resetBindListener(rel, newAttr, na[newAttr], la[newAttr]);
                 }
+                else if(key === "style"){
+                    rel.style[newAttr] = na[newAttr];
+                }
                 else {
                     rel[newAttr] = na[newAttr];
                 }
@@ -261,10 +265,13 @@ function constrast(la, na, key, rel) {
                     dom.removeAttribute(rel, oldAttr);
                 }
                 else if (key === "on") {
-                    unBindListener(rel, newAttr, la[newAttr]);
+                    unBindListener(rel, oldAttr, la[oldAttr]);
+                }
+                else if(key === "style"){
+                    rel.style[oldAttr] = null;
                 }
                 else {
-                    rel[newAttr] = null;
+                    rel[oldAttr] = null;
                 }
             }
         }
@@ -408,7 +415,7 @@ function parsePropsData(Ctor, data) {
             res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
-    else if(Reflect.ownKeys(props).length > 0){
+    else if (Reflect.ownKeys(props).length > 0) {
         console.warn(`[Sact-warn]:this component '${Ctor.name}' had not define props,
                     but this component was feeded in some props '${Reflect.ownKeys(props)}',this props will be not available,
                     beacuse those maybe will cause some wrong. we do not recommond`)
@@ -534,22 +541,16 @@ function setAttrs(rel, data, self) {
         }
     }
 }
+
+
 function setStyle(rel, style) {
     let type = typeof style;
-    if (Array.isArray(style)) {
-        for (let i = 0; i < style.length; i++) {
-            setStyle(rel, style[i]);
-        }
-    }
-    else if (type === "object") {
+    if (type === "object") {
         let keys = Reflect.ownKeys(style)
         for (let i = 0; i < keys.length; i++) {
             let key = keys[i];
             rel.style[key] = style[key];
         }
-    }
-    else if (type === "string") {
-        rel.style = style;
     }
 }
 
@@ -578,7 +579,7 @@ function setDomAttrs(rel, attrs) {
 }
 
 //触发vnode的生命周期函数
-function callVnodeHooks(el,){
+function callVnodeHooks(el,) {
 
 }
 

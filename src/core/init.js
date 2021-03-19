@@ -132,7 +132,7 @@ function initData(sact) {
         sact.data = data;
     }
     else if (data) {
-        sact.data = withComputedReactive(data,sact.$computed);
+        sact.data = withComputedReactive(data, sact.$computed);
     }
     else {
         sact.data = {};
@@ -153,7 +153,7 @@ function initMethod(sact) {
         };
     }
     sact.effects = [];
-    sact._c_ = (a, b, c, zid) => createVnode(sact, a, b, c, zid);
+    sact._c_ = (a, b, c, type, zid) => createVnode(sact, a, b, c, type, zid);
     sact._f_ = (i, f) => createFor(i, f);
 }
 

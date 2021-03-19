@@ -1,13 +1,24 @@
+import { isArray } from "../tools/untils.js";
+
+export const vnodeType = {
+    static: 1,
+    dynamic: 2,
+}
+
 
 
 export class Vnode {
-    constructor(vm, a, b, c, d, istext, zid) {
+    constructor(vm, a, b, c, d, istext, zid, type) {
 
         this.context = vm
         this.tag = istext ? "_text_" : a
         this.data = b
+        if (b && b.style) {
+            b.style = renStyle(b.style);
+        }
         this.componentOptions = d
 
+        this.type = type;
         this.parent = undefined
         this.text = istext ? a : undefined
         this.key = b && b.key;
@@ -15,7 +26,12 @@ export class Vnode {
         this.element = undefined
 
         this.zid = zid
-        this.children = genVdomChildren(c, vm, this)
+        if (!istext) {
+            [this.children, type] = genVdomChildren(c, vm, this)
+            if(this.type === vnodeType.static){
+                this.type = type;
+            }
+        }
     }
 
     getParentEle() {
@@ -29,27 +45,28 @@ export class Vnode {
 
 
 
-export function createVnode(vm, a, b, c, zid) {
+export function createVnode(vm, a, b, c, type, zid) {
     const { components } = vm;
     if (Reflect.ownKeys(components).indexOf(a) > -1) { //当a是自定义组件时
-        return createComponent(components[a], b, vm, c, a, zid);
+        return createComponent(components[a], b, vm, c, a, zid, type);
     }
     else if (a === "slot") {
         return createSolt(vm, b, c);
     }
     else {
-        return new Vnode(vm, a, b, c, undefined, false, zid);
+        return new Vnode(vm, a, b, c, undefined, false, zid, type);
     }
 }
 
-export function createComponent(Ctor, data, context, children, tag, zid) {
+export function createComponent(Ctor, data, context, children, tag, zid, type) {
+    [children, type] = genVdomChildren(children)
     let vnode = new Vnode(context,
         ("sact-component-" + (zid) + "-" + tag),
         data, undefined, {
         Ctor: Ctor,
         tag: tag,
-        children: genVdomChildren(children),
-    }, false, zid);
+        children,
+    }, false, zid, type);
     return vnode
 }
 export function createSolt(vm, data, children) {
@@ -100,18 +117,50 @@ export function createFor(iterater, fn) {
 //合并生成的列表
 function genVdomChildren(list, vm, parent) {
     let res = [];
+    let typeFlag = vnodeType.static;
     if (list) {
         for (let i of list) {
             if (Array.isArray(i)) {
-                res = res.concat(genVdomChildren(i, vm, parent));
+                let rres = [];
+                [rres, typeFlag] = genVdomChildren(i, vm, parent);
+                res = res.concat(rres)
             }
             else if (typeof i === "string") {
                 res.push(new Vnode(vm, i, undefined, undefined, undefined, true))
             }
             else if (i) {
+                if (i.type === vnodeType.dynamic) {
+                    typeFlag = vnodeType.dynamic;
+                }
                 res.push(i);
             }
         }
-        return res.map((v) => { v.parent = parent; return v; });
+        return [res.map((v) => { v.parent = parent; return v; }), typeFlag];
     }
+    return [undefined, undefined]
+}
+
+function renStyle(style, seen = {}) {
+    let type = typeof style;
+    if (isArray(style)) {
+        for (let i = 0; i < style.length; i++) {
+            renStyle(style[i], seen);
+        }
+    }
+    else if (type === "object") {
+        let keys = Reflect.ownKeys(style)
+        for (let i = 0; i < keys.length; i++) {
+            let key = keys[i];
+            seen[key] = style[key];
+        }
+    }
+    else if (type === "string") {
+        style.split(";").forEach((v) => {
+            let value = v.split(":")
+            if (value.length === 2) {
+                seen[value[0]] = value[1];
+            }
+        })
+    }
+    return seen;
 }

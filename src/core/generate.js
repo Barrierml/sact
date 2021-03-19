@@ -1,5 +1,6 @@
 //将ast语法树转化成语法
 import { getAndRemoveAttr, getDynamicName, AttrsTag } from "../tools/untils.js"
+import { vnodeType } from "./vnode.js";
 //给每个元素附上索引
 let zid = 0;
 const simplePathRE = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*|\['.*?'\]|\[".*?"\]|\[\d+\]|\[[A-Za-z_$][\w$]*\])*$/
@@ -28,6 +29,7 @@ export default function generate(ast) {
 }
 
 function genElement(ast) {
+    ast.type = vnodeType.static;
     let res;
     if (res = getAndRemoveAttr(ast, 's-for')) { //解析for指令
         return genFor(ast, res);
@@ -39,7 +41,8 @@ function genElement(ast) {
         return genChildren(ast);
     }
     else {
-        return `_c_('${ast.tagName}', ${genData(ast)}, ${genChildren(ast)},${zid++})`;
+        let [data,children] = [genData(ast),genChildren(ast)] 
+        return `_c_('${ast.tagName}', ${data}, ${children},${ast.type},${zid++})`;
     }
 }
 
@@ -53,6 +56,7 @@ function genFor(ast, exp) {
     let iteration = inMatch[2];
     let alias = inMatch[1].trim().replace("(", '').replace(")", "");
 
+    ast.type = vnodeType.dynamic;
     return `_f_(${iteration},function(${alias}){
       return ${genElement(ast)}
     })`
@@ -81,6 +85,7 @@ function genData(ast) {
 
     const classBinding = getAndRemoveAttr(ast, 's:class') || getAndRemoveAttr(ast, 's-bind:class') || getAndRemoveAttr(ast, ':class');
     if (classBinding) {
+        ast.type = vnodeType.dynamic;
         data += `class: ${classBinding},`;
     }
     const staticClass = getAndRemoveAttr(ast, 'class');
@@ -97,6 +102,7 @@ function genData(ast) {
         let value = attr.value;
 
         if (/^s-bind:|^:|s:/.test(name)) {
+            ast.type = vnodeType.dynamic;
             name = name.replace(/^:|^s-bind:|^s:/, '');
             if (name === 'style') {
                 style += `${value},`
@@ -113,27 +119,32 @@ function genData(ast) {
             }
         }
         else if (/^@|^s-on:|^s@/.test(name)) { // s-on
+            ast.type = vnodeType.dynamic;
             const modifiers = parseModifiers(name);  // 事件修饰符（.stop/.prevent/.self）
             name = removeModifiers(name);
             hasEvents = true;
             name = name.replace(/^@|^s-on:|^s@/, '');
             addHandler(events, name, value, modifiers);
         }
-        else if (/^s-model/.test(name)) {
+        else if (/^s-model:|s-model/.test(name)) {
+            ast.type = vnodeType.dynamic;
+            name = name.replace(/^s-model:|s-model/, "")
+
             const modifiers = parseModifiers(name);  // 事件修饰符（.lazy/.trim./number）
             name = removeModifiers(name);
+
             hasEvents = true;
-            name = name.replace(/^s-model/, '');
-            let bindName = addModaler(events, ast.tagName, value, modifiers);
+            addModaler(events, ast.tagName, name, value, modifiers);
+
             hasProps = true;
-            props += `"${bindName}": (${value}),`;
+            props += `"${name}": (${value}),`;
         }
         else {
             if (name === "style") {
                 style += `${JSON.stringify(value)},`;
                 hasStyle = true;
             }
-            else if(name !== "s-show"){
+            else if (name !== "s-show") {
                 hasAttrs = true;
                 attrs += `"${name}": (${JSON.stringify(value)}),`;
             }
@@ -142,6 +153,7 @@ function genData(ast) {
 
     let hasShow = getAndRemoveAttr(ast, "s-show");
     if (hasShow) {
+        ast.type = vnodeType.dynamic;
         style += `{display:${hasShow} ? '' : 'none'},`;
         props += `"sShow": true,`;
         hasProps = true;
@@ -172,23 +184,23 @@ function parseModifiers(name) {
 function removeModifiers(name) {
     return name.replace(/\.[^\.]+/g, '');
 }
-function addModaler(events, tagName, value, modifiers) {
-    let code = "let _v_ =";
-    let handlerName = "change";
-    let bindValue = "value";
-    switch (tagName) {
-        case "input":
-            handlerName = "input";
-            code += `$event.target.value;`;
-            bindValue = "value";
-            break;
-        case "select":
-            handlerName = "change";
-            code += `$event.target.value;`
-            bindValue = "value";
-            break;
+function addModaler(events, tagName, name, value, modifiers) {
+    //默认为value
+    if (!name) {
+        name = "value";
     }
+
+    let code = "let _v_ =";
+    let handlerFN = "change"
+
+    if (tagName === "input") {
+        handlerFN = "input"
+    }
+
+    code += `$event.target.${name};`;
+
     if (Array.isArray(modifiers)) {
+
         for (let i = 0; i < modifiers.length; i++) {
             if (modifiers[i] === "trim") {
                 code += `_v_ = _v_.trim && _v_.trim();`
@@ -196,11 +208,15 @@ function addModaler(events, tagName, value, modifiers) {
             else if (modifiers[i] === "number") {
                 code += `_v_ = parseInt(_v_) || _v_;`
             }
+            else if (modifiers[i] === "lazy") {
+                handlerFN = "change";
+            }
         }
     }
+
     code += `${value} = _v_;`;
-    events[handlerName] = { value: code };
-    return bindValue;
+
+    events[handlerFN] = { value: code };
 }
 function addHandler(events, name, value, modifiers) {
     const captureIndex = modifiers && modifiers.indexOf('capture');
@@ -264,17 +280,18 @@ function genChildren(ast) {
         if (node.tagName) {
             return genElement(node);
         } else {
-            return genText(node);
+            return genText(ast,node);
         }
     }).join(',') + ']';
 }
-function genText(text) {
+function genText(ast,text) {
     if (text === ' ') {
         return '" "';
     } else {
         const exp = parseText(text);
         if (exp) {
-            return '(' + exp + ')';
+            ast.type = vnodeType.dynamic;
+            return 'String(' + exp + ')';
         } else {
             return JSON.stringify(text);
         }
