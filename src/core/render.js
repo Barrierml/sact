@@ -11,21 +11,30 @@ function render(vnode, container) {
         vnode.context.$ele = rel;
         vnode.context.callHooks("mounted");
     }
-    else { //出现这种情况只能是自定义render之前是空，现在有渲染结果了
-        let warp = vnode.warpSact.wrapVnode;
-        if (warp) {
-            let parentEle = warp.getParentEle();
+    else if (vnode.context.isComponent) { //组件初始化
+        renElement(vnode)
+    }
+    else if (vnode.warpSact) { //抽象组件安装
+        let achor = vnode.achor || vnode.parent;
+        if (achor) {
+            achor = getRealVnode(achor);
             let rel = vnode.element || renElement(vnode);
-            let index = warp.parent.children.indexOf(warp) - 1;
-            let achor = warp.parent.children[index].element;
-            dom.insert(rel, parentEle, dom.next(achor));
-        }
-        else {
-            console.warn("[Sact-warn]:", vnode);
-            throw new Error("渲染vnode错误！没有真实元素存在！")
+            dom.insert(rel, achor.parentElement, dom.next(achor));
         }
     }
+    else {
+        console.warn("[Sact-warn]:", vnode);
+        throw new Error("渲染vnode错误！没有真实元素存在！")
+    }
 }
+
+function getRealVnode(vnode) {
+    while (!vnode.element) {
+        vnode = vnode.achor;
+    }
+    return vnode.element;
+}
+
 
 /**
  * 传入vnode进行渲染或者patch
@@ -50,7 +59,7 @@ export function patch(v1, v2, container) {
     }
     //组件第一次创建
     else if (!v1 && v2 && !container) {
-        v2.context.$ele = renElement(v2);
+        render(v2, null);
     }
     else {
         console.warn("[Sact-warn]:not aivailable Vnode", v1, v2);
@@ -67,7 +76,7 @@ function patchVnode(v1, v2) {
     else if (v1.componentOptions && v2.componentOptions) {
         patchCompent(v1, v2);
     }
-    else if(v2.type === 1){
+    else if (v2.type === 1) {
         return;
     }
     else {
@@ -232,6 +241,7 @@ function patchChildren(parentEle, c1, c2) {
             destroryVnode(oc)
         }
     }
+
 }
 
 
@@ -250,7 +260,7 @@ function constrast(la, na, key, rel) {
                 else if (key === "on") {
                     resetBindListener(rel, newAttr, na[newAttr], la[newAttr]);
                 }
-                else if(key === "style"){
+                else if (key === "style") {
                     rel.style[newAttr] = na[newAttr];
                 }
                 else {
@@ -267,7 +277,7 @@ function constrast(la, na, key, rel) {
                 else if (key === "on") {
                     unBindListener(rel, oldAttr, la[oldAttr]);
                 }
-                else if(key === "style"){
+                else if (key === "style") {
                     rel.style[oldAttr] = null;
                 }
                 else {
@@ -344,6 +354,10 @@ function renComponent(vnode, option) {
     Ctor._mounted = true;
 
     ele = Ctor.$ele;
+
+    if (Ctor.$vnode) {
+        Ctor.$vnode.parent = vnode;
+    }
 
     if (Ctor.isShowAttr) {
         setAttrs(ele, props, Ctor);
@@ -428,6 +442,10 @@ function parsePropsData(Ctor, data) {
 function checkProps(checker, attr, key, cname) {
     let { type, validator, required } = checker;
 
+    if (attr === undefined || attr === null) {
+        return attr;
+    }
+
     //先判断是否为必须
     if (required && attr === undefined) {
         throw new Error(`\n[Sact-warn]:this component '${cname}',` +
@@ -496,13 +514,12 @@ function renChildren(rel, children) {
     if (Array.isArray(children)) {
         for (let child of children) {
             let res = renElement(child);
-            if (Array.isArray(res)) {
-                res.map((v) => {
-                    rel.appendChild(v);
-                })
-            }
-            else if (res) {
+            if (res) {
                 rel.appendChild(res);
+            }
+            else if (res !== undefined) {
+                console.log(child, res);
+                throw new Error("非法vnode！")
             }
         }
     }

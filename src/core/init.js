@@ -342,6 +342,8 @@ function initPatch(sact) {
         }
 
         patch(oldVnode, this.$vnode, this.$ele);
+        
+        this.$ele = this.$vnode && this.$vnode.element;
 
         this.callHooks("updated");
     }

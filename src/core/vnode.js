@@ -25,10 +25,12 @@ export class Vnode {
 
         this.element = undefined
 
+        this.achor = undefined
+
         this.zid = zid
         if (!istext) {
             [this.children, type] = genVdomChildren(c, vm, this)
-            if(this.type === vnodeType.static){
+            if (this.type === vnodeType.static) {
                 this.type = type;
             }
         }
@@ -118,26 +120,42 @@ export function createFor(iterater, fn) {
 function genVdomChildren(list, vm, parent) {
     let res = [];
     let typeFlag = vnodeType.static;
+    let achor = parent;
+
     if (list) {
         for (let i of list) {
             if (Array.isArray(i)) {
                 let rres = [];
                 [rres, typeFlag] = genVdomChildren(i, vm, parent);
+
+                rres && rres.forEach((v) => {
+                    setAchorParent(v)
+                })
+
                 res = res.concat(rres)
             }
             else if (typeof i === "string") {
-                res.push(new Vnode(vm, i, undefined, undefined, undefined, true))
+                let v = new Vnode(vm, i, undefined, undefined, undefined, true);
+                setAchorParent(v);
+                res.push(v)
             }
             else if (i) {
                 if (i.type === vnodeType.dynamic) {
                     typeFlag = vnodeType.dynamic;
                 }
+                setAchorParent(i)
                 res.push(i);
             }
         }
         return [res.map((v) => { v.parent = parent; return v; }), typeFlag];
     }
     return [undefined, undefined]
+
+    function setAchorParent(vnode) {
+        vnode.achor = achor;
+        achor = vnode;
+        vnode.parent = parent;
+    }
 }
 
 function renStyle(style, seen = {}) {

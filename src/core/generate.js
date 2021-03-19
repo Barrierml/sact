@@ -17,8 +17,8 @@ export default function generate(ast) {
             }`).call(ctx)
         }
         catch (e) {
-            if (e instanceof TypeError) {
-                console.warn("[Sact-warn]:Cannot read property of undefined, please check props\n", ctx, e);
+            if (e instanceof ReferenceError) {
+                console.warn("[Sact-warn]:Cannot read property of undefined, please check props\n", ctx,"\n", e);
                 throw new Error("请确定你声明了正确的变量")
             }
             else {

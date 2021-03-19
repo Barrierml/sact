@@ -35,6 +35,10 @@
         <p class="qq" s-show="show" :style="{display:'flex'}">123123123</p>
         <p :style="{[ww]:'red'}">{{pci}}</p>
         <p s-for="ss in qq">{{ss}}</p>
+        <im-qq></im-qq>
+        <transition>
+            <im-qq s-if="show"></im-qq>
+        </transition>
         <form>
             <select s-model:value="pci">
                 <option s-model:selected="show" value="苹果">苹果</option>
@@ -42,15 +46,15 @@
                 <option value="栗子">栗子</option>
             </select>
             <input type="checkbox" s-model:checked="show"/>
-            <im-qq></im-qq>
         </form>
     </div>
 </body>
 <script type="module">
     import Sact from "../src/sact.js";
+    import transition from "../src/component/transition.js"
     let qq = Sact.component({
         name:"im-qq",
-        template:"<div>{{props.text}}<input s-model:value='props.text'/></div>",
+        template:"<div>im-qq!!!</div>",
         props:["text"]
     })
     window.qq =  new Sact({
@@ -72,7 +76,7 @@
             }
         },
         component:{
-            qq,
+            qq,transition
         }
     })
 </script>
