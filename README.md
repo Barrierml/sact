@@ -59,7 +59,7 @@ Sact.link()
 这只是两种不同的声明方式，所创建的app是完全一样的，对象式更好理解，而声明式更容易帮助我们将组件的每个功能分离，选择你喜欢的方式来进行开发吧。
 
 ## Documentation - 文档与教程
-正在全力编写中！
+[点我前往文档](http://shir0ha.gitee.io/sact/#/)
 ## Issues - 提问
 有任何关于Sact的使用问题，或者bug都可以在Issues内提出。
 ## License - 许可证
