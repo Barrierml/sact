@@ -100,9 +100,9 @@ function traverse(value, seen = new Set()) {
 
 function initComputed(sact) {
     let { computed } = sact.$options;
-
+    sact.$computed = {};
+    
     if (isObj(computed)) {
-        sact.$computed = {};
         for (const key in computed) {
             let fn = computed[key];
             if (isFunc(fn)) {
@@ -166,7 +166,7 @@ function initComponent(sact) {
         sact.isComponent = true;
         sact.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
-        sact.isShowAttr = options.isShowAttr || true; //默认显示属性在组件上
+        sact.isShowAttr = options.isShowAttr === undefined ? true : false; //默认显示属性在组件上
         sact._shouldMount = false;
     }
     sact.components = {};
@@ -329,8 +329,10 @@ function initWhen(sact) {
 function initPatch(sact) {
 
     let job = function () {
-
-        if (!this.isComponent) {
+        if (!this._mounted) {
+            this.callHooks("beforeMount")
+        }
+        else {
             this.callHooks("beforeUpdate");
         }
 
@@ -342,10 +344,15 @@ function initPatch(sact) {
         }
 
         patch(oldVnode, this.$vnode, this.$ele);
-        
+
         this.$ele = this.$vnode && this.$vnode.element;
 
-        this.callHooks("updated");
+        if (this._mounted) {
+            this.callHooks("updated");
+        }
+        else {
+            this.callHooks("mounted")
+        }
     }
 
     sact.patch = effect(job.bind(sact), {
@@ -355,8 +362,8 @@ function initPatch(sact) {
     recordInstanceBoundEffect(sact.patch, sact);
 
     if (sact._shouldMount) {
-        sact._mounted = true;
         sact.patch();
+        sact._mounted = true;
         sact._shouldMount = false;
     }
 }

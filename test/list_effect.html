@@ -6,10 +6,12 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
+    <script src="./flip.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 </head>
 
 <style>
-    body{
+    body {
         background-color: #34495e;
         margin: 0;
         padding: 0;
@@ -18,66 +20,95 @@
         justify-content: center;
         height: 100vh;
     }
-    .content{
+
+    .content {
         height: 400px;
         width: 400px;
         background-color: rgb(44, 235, 193);
         border-radius: 4px;
     }
 
-    .qq{
+    .qq {
         display: flex;
+    }
+
+    .fadein {
+        animation: fade 1s;
+    }
+
+    .fadeout {
+        animation: fadeo 1s;
+    }
+
+    @keyframes fade {
+        from {
+            opacity: 0;
+        }
+    }
+
+    @keyframes fadeo {
+        to {
+            opacity: 0;
+        }
     }
 </style>
 
+
 <body>
     <div id="root" class="content">
-        <p class="qq" s-show="show" :style="{display:'flex'}">123123123</p>
+        <!-- <p class="qq" s-show="show" :style="{display:'flex'}">123123123</p>
         <p :style="{[ww]:'red'}">{{pci}}</p>
         <p s-for="ss in qq">{{ss}}</p>
-        <im-qq></im-qq>
-        <transition>
-            <im-qq s-if="show"></im-qq>
+        <im-qq></im-qq> -->
+        <im-qq s-if="show"></im-qq>
+        <button @click="show = !show">adasdsa</button>
+        <!-- <transition duration="1000" enter="fadein" :key="ww" s-for="ww in qq">
+            <p style="display: inline-block;padding:8px;background-color: #fff;">{{ww}}</p>
         </transition>
-        <form>
-            <select s-model:value="pci">
-                <option s-model:selected="show" value="苹果">苹果</option>
-                <option value="香蕉">香蕉</option>
-                <option value="栗子">栗子</option>
-            </select>
-            <input type="checkbox" s-model:checked="show"/>
-        </form>
+        <transition duration="1000">
+            <button @click="pp">添加</button>
+        </transition> -->
     </div>
 </body>
 <script type="module">
     import Sact from "../src/sact.js";
     import transition from "../src/component/transition.js"
     let qq = Sact.component({
-        name:"im-qq",
-        template:"<div>im-qq!!!</div>",
-        props:["text"]
+        name: "im-qq",
+        template: "<div>im-qq!!!</div>",
+        props: ["text"]
     })
-    window.qq =  new Sact({
-        el:"#root",
-        data:{
-            qq:[1,2,3],
-            show:false,
-            pci:"12323",
-            st:"color",
+    let pp = 4;
+    window.qq = new Sact({
+        el: "#root",
+        data: {
+            qq: [1, 2,3,4,5,6],
+            show: false,
+            pci: "12323",
+            st: "color",
         },
-        computed:{
-            ww(){
-                if(this.data.show){
+        method: {
+            pp() {
+                this.data.qq = _.shuffle(this.data.qq);
+            },
+            vv(e) {
+                
+            },
+        },
+        computed: {
+            ww() {
+                if (this.data.show) {
                     return "color"
                 }
-                else{
+                else {
                     return "background-color"
                 }
             }
         },
-        component:{
-            qq,transition
+        component: {
+            qq, transition
         }
     })
 </script>
+
 </html>

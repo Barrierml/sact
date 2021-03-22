@@ -4,28 +4,38 @@ import { extend, isArray, isFunc, isObj, isString } from "../tools/untils.js"
 
 function render(vnode, container) {
     if (container) { //覆盖渲染
-        vnode.context.callHooks("beforeMount");
         let rel;
         rel = renElement(vnode);
         dom.replace(container, rel);
         vnode.context.$ele = rel;
-        vnode.context.callHooks("mounted");
     }
     else if (vnode.context.isComponent) { //组件初始化
-        renElement(vnode)
+        renElement(vnode);
     }
     else if (vnode.warpSact) { //抽象组件安装
         let achor = vnode.achor || vnode.parent;
         if (achor) {
             achor = getRealVnode(achor);
             let rel = vnode.element || renElement(vnode);
-            dom.insert(rel, achor.parentElement, dom.next(achor));
+
+            //防止第一个元素插入的失败
+            if(achor === vnode.parent.element){
+                dom.insert(rel, achor);
+            }
+            else{
+                dom.insert(rel, achor.parentElement, dom.next(achor));
+            }
+
         }
     }
     else {
         console.warn("[Sact-warn]:", vnode);
         throw new Error("渲染vnode错误！没有真实元素存在！")
     }
+}
+
+function onCreated(vnode, rel) {
+    vnode.onCreated(rel);
 }
 
 function getRealVnode(vnode) {
@@ -68,6 +78,7 @@ export function patch(v1, v2, container) {
 }
 
 function patchVnode(v1, v2) {
+    v2.element = v1.element;
     if (v1.tag === "_text_") {
         if (v1.text !== v2.text) {
             patchText(v2.text, v1.element);
@@ -83,7 +94,7 @@ function patchVnode(v1, v2) {
         patchAttrs(v1, v2);
         prePatchChildren(v1.children, v2.children, v1.element);
     }
-    v2.element = v1.element;
+    
 }
 
 
@@ -122,14 +133,17 @@ function patchCompent(v1, v2) {
     let oldValue = [Ctor.$slot, Ctor.props];
     Ctor.$slot = renSlot(newOpts.children);
     Ctor.props = parsePropsData(Ctor, v2.data);
+    //更换容器
+    Ctor.wrapVnode = v2;
     //新值
     let newValue = [Ctor.$slot, Ctor.props]
-    Ctor.callHooks("beforeUpdate");
     //shouldUpate
     if (Ctor.callHooks("shouldUpdate")(oldValue[1], newValue[1])) {
         if (shouldPacthComponent(oldValue, newValue)) {
             Ctor.patch();
-            setAttrs(Ctor.$ele, Ctor.props, Ctor);
+            if (Ctor.isShowAttr) {
+                setAttrs(Ctor.$ele, Ctor.props, Ctor);
+            }
         }
     }
 }
@@ -174,6 +188,7 @@ function patchAttrs(v1, v2) {
 
 //diff算法核心 比较子数组
 function patchChildren(parentEle, c1, c2) {
+    vnodesTigger(c1,"onBeforeMove");
     let oldStartIdx = 0;
     let newStartIdx = 0;
     let oldEndIdx = c1.length - 1;
@@ -241,7 +256,7 @@ function patchChildren(parentEle, c1, c2) {
             destroryVnode(oc)
         }
     }
-
+    vnodesTigger(c1,"onMove");
 }
 
 
@@ -311,6 +326,9 @@ function renElement(vnode) {
     //组件
     if (vnode.componentOptions) {
         vnode.element = renComponent(vnode, vnode.componentOptions)
+        if (vnode.onCreated) {
+            onCreated(vnode, vnode.element)
+        }
         return vnode.element;
     }
     //正常元素
@@ -326,6 +344,9 @@ function renElement(vnode) {
         dom.setAttribute(rel, "key", key);
     }
     vnode.element = rel;
+    if (vnode.onCreated) {
+        onCreated(vnode, rel)
+    }
     return rel;
 }
 function renComponent(vnode, option) {
@@ -349,7 +370,6 @@ function renComponent(vnode, option) {
     //开始渲染
     let ele = null;
 
-    Ctor.callHooks("beforeMount");
     Ctor.patch();
     Ctor._mounted = true;
 
@@ -366,8 +386,6 @@ function renComponent(vnode, option) {
     if (key) {
         dom.setAttribute(ele, "key", key);
     }
-
-    Ctor.callHooks("mounted");
     return ele;
 }
 
@@ -435,7 +453,7 @@ function parsePropsData(Ctor, data) {
                     beacuse those maybe will cause some wrong. we do not recommond`)
     }
     Ctor.props = res;
-    return props;
+    return res;
 }
 
 //检查props正确性
@@ -443,7 +461,7 @@ function checkProps(checker, attr, key, cname) {
     let { type, validator, required } = checker;
 
     if (attr === undefined || attr === null) {
-        return attr;
+        return checker.default || attr;
     }
 
     //先判断是否为必须
@@ -504,10 +522,16 @@ function checkProps(checker, attr, key, cname) {
 
 
 function destroryVnode(vnode) {
+    if (vnode.onDestrory) {
+        vnode.onDestrory(vnode.element, () => dom.remove(vnode.element));
+    }
     if (vnode.componentOptions) {
         vnode.componentOptions.Ctor.destory();
+        dom.remove(vnode.element)
     }
-    dom.remove(vnode.element);
+    else {
+        dom.remove(vnode.element)
+    }
 }
 
 function renChildren(rel, children) {
@@ -526,6 +550,9 @@ function renChildren(rel, children) {
 }
 function setAttrs(rel, data, self) {
     let c = "";
+    if (!rel) {
+        return;
+    }
     for (let i of Reflect.ownKeys(data)) {
         switch (i) {
             case "attrs":
@@ -595,8 +622,18 @@ function setDomAttrs(rel, attrs) {
     }
 }
 
-//触发vnode的生命周期函数
-function callVnodeHooks(el,) {
+ 
+function vnodesTigger(vnodes,name){
+    vnodes.forEach(v => {
+        callHooks(v,name,v.element)
+    });
+} 
 
+
+//触发vnode的生命周期函数
+function callHooks(vnode,name,args) {
+    if(vnode[name]){
+        vnode[name](args)
+    }
 }
 
