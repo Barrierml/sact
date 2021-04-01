@@ -6,14 +6,25 @@
 
 
 ## Introduction - 介绍
-Sact是一个用于构建静态网站复杂功能开发的渐进式框架。它被设计成可增量采用的，使用包装好的组件进行开发。
-它由一个只关注视图层的核心库和一个支持组件化开发的生态系统组成，它可以帮助您快速的开发静态页面内复杂功能模块的实现
+Sact是一个仿照vue和react造的轮子，从零实现了vue的大部分功能，也引入了一些关于react概念，主要是为了解决我在写静态页面时复杂功能实现，顺便学习关于mvvm框架的核心原理。
+响应式仿造Vue3使用Proxy实现的
+DIff是自己实现的，同时使用了静态节点优化
+htmlParser是借鉴的vue2的htmlParser，做了一些精简
+watcher与computed也均支持，用法与vue2相同
+transition支持fifp动画和enter leave
+源码可以直接克隆查看，大部分都都做的有注释
+
+我也使用sact开发了一个即时聊天程序[地址](https://www.jiandanmaimai.cn/web/IM/index.html)
+[源码地址](https://gitee.com/SHIR0HA/jiandanmaimai-im)
+
 
 ### Summary - 概要
 您是否经常要在静态网站内开发一些特殊的功能模块，比如说添加一个新的搜索功能？一个新的弹窗功能？或者是一个新的页面？
 不想使用Jquery，原生JS，来进行命令式开发，再为此引入Vue或者React？这可是个静态页面，我要引入多少东西？还要打包多少包？
 那么Sact可能就是你所需要的，它专门针对静态页面的复杂功能开发，只需要引入一个不到8kb的sact组件包（gzip）你就可以在网页内直接开发响应式组件。
 不需要webpack来打包，不需要引入一堆无关的转义器，开箱即用。
+
+
 ### Features - 特性
 1. **mini体积**，gzip后只有8kb。
 2. **开箱即用**，只需引入一个sact.js，一切即可开始
