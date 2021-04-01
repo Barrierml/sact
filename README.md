@@ -8,15 +8,11 @@
 ## Introduction - 介绍
 Sact是一个仿照vue和react造的轮子，从零实现了vue的大部分功能，也引入了一些关于react概念，主要是为了解决我在写静态页面时复杂功能实现，顺便学习关于mvvm框架的核心原理。
 
-*响应式仿造Vue3使用Proxy实现的
-
-*DIff是自己实现的，同时使用了静态节点优化
-
-*htmlParser是借鉴的vue2的htmlParser，做了一些精简
-
-*watcher与computed也均支持，用法与vue2相同
-
-*transition支持fifp动画和enter leave
+* 响应式仿造Vue3使用Proxy实现的
+* DIff是自己实现的，同时使用了静态节点优化
+* htmlParser是借鉴的vue2的htmlParser，做了一些精简
+* watcher与computed也均支持，用法与vue2相同
+* transition支持fifp动画和enter leave
 
 >源码可以直接克隆查看，大部分都都做的有注释
 
