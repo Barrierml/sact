@@ -16,7 +16,7 @@ Sact是一个仿照vue和react造的轮子，从零实现了vue的大部分功�
 
 >源码可以直接克隆查看，大部分都都做的有注释
 
-我也使用sact开发了一个即时聊天程序[地址](https://www.jiandanmaimai.cn/web/IM/index.html)
+我也使用sact开发了一个即时聊天程序[演示](https://www.jiandanmaimai.cn/web/IM/index.html)
 [源码地址](https://gitee.com/SHIR0HA/jiandanmaimai-im)
 
 
