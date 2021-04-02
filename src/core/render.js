@@ -80,7 +80,7 @@ export function patch(v1, v2, container) {
     else if (!v1 && v2 && !container) {
         render(v2, null);
     }
-    //transiton判断是先出还是先入
+    //transiton 过渡，先删除旧的再生成新的
     else if (v1 && v2) {
         translate(v1, v2);
     }

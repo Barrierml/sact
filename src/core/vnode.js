@@ -74,7 +74,7 @@ export function createDynamicComponent(vm, data, children, components, zid, type
         && components
         && Reflect.ownKeys(components).indexOf(ComponentName) > -1) {
         Reflect.deleteProperty(data.attrs,"is");
-        return createComponent(components[ComponentName], data, vm, children, zid, type);
+        return createComponent(components[ComponentName], data, vm, children, ComponentName , zid, type);
     }
     else {
         sactWarn(`${vm.name} don't have component ${ComponentName},please check your name.`,
@@ -82,8 +82,6 @@ export function createDynamicComponent(vm, data, children, components, zid, type
         return undefined;
     }
 }
-
-
 
 
 
@@ -98,6 +96,9 @@ export function createComponent(Ctor, data, context, children, tag, zid, type) {
     }, false, zid, type);
     return vnode
 }
+
+
+
 export function createSolt(vm, data, children) {
     if (vm.$slot) {
         let slotName = data.attrs && data.attrs.name;

@@ -1,5 +1,5 @@
 import Sact from "../sact.js"
-import { exceptExtend, isArray, isString } from "../tools/untils.js";
+import { exceptExtend, isArray, isString, sactWarn } from "../tools/untils.js";
 
 const prefix = "s";
 
@@ -26,6 +26,9 @@ function getRealChild(vnode) {
 function getFirstComponentChild(vnodes) {
     if (isArray(vnodes) && vnodes.length === 1) {
         return vnodes[0];
+    }
+    else if(isArray(vnodes) && vnodes.length > 1){
+        throw new Error("transiton just recive a child, more children please use transition-group")
     }
     else {
         return undefined;
@@ -149,30 +152,33 @@ function dealShow(data,child) {
     }
 }
 
+export const transitionProps =  {
+    "mode": { //模式，默认为先出后进
+        default: "out-in",
+        validator(value) {
+            return value === "in-out" || value === "out-in";
+        }
+    },
+    "name": "string",//自动会在前面加上s-的前缀找到class
+    "enter": "string",//元素添加前的类
+    "enterActive": "string",//整个元素创建期间的类名
+    "enterTo": "string",//元素被插入后的类名
+    "leave": "string", //元素被删除前的类名
+    "leaveActive": "string",//元素删除期间的类名
+    "enterTo": "string",//元素被删除（leave移除后）后的类名
+    "duration": { //动画的持续时间
+        type: "string",
+        default: "500"
+    },
+},
+
+
 
 export default Sact.component({
     name: 'transition',
     isAbstract: true,
     isShowAttr: false,
-    props: {
-        "mode": { //模式，默认为先出后进
-            default: "out-in",
-            validator(value) {
-                return value === "in-out" || value === "out-in";
-            }
-        },
-        "name": "string",//自动会在前面加上s-的前缀找到class
-        "enter": "string",//元素添加前的类
-        "enterActive": "string",//整个元素创建期间的类名
-        "enterTo": "string",//元素被插入后的类名
-        "leave": "string", //元素被删除前的类名
-        "leaveActive": "string",//元素删除期间的类名
-        "enterTo": "string",//元素被删除（leave移除后）后的类名
-        "duration": { //动画的持续时间
-            type: "string",
-            default: "500"
-        },
-    },
+    props:transitionProps,
     beforeMount() {
         this._data = {};
         this._data.opts = initdata(this.props);
@@ -185,7 +191,7 @@ export default Sact.component({
     },
     render(h) {
         let child = getRealChild(getFirstComponentChild(this.$slot["default"]))
-        
+
         if (!child) {
             return;
         }
