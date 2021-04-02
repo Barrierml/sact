@@ -19,6 +19,8 @@ export default function initAll(options) {
     initData(this);
     initComponent(this);
     this.callHooks("created");
+
+    //仓库模式无需初始化
     if (this._isStore) {
         initStore(this);
     }
@@ -79,6 +81,7 @@ function getRealDom(el) {
     }
     throw new Error(`[Sact-warn]:${el} 在页面内找不到真实元素！`)
 }
+
 //将内置的列表全部合并到一个列表内
 function traverse(value, seen = new Set()) {
     if (isArray(value) || value instanceof NodeList) {
@@ -98,6 +101,19 @@ function traverse(value, seen = new Set()) {
 }
 
 
+//初始化watcher
+function initWatch(sact){
+    let {watch} = sact.$options;
+    sact.$watch = {};
+    if(isObj(watch)){
+    }
+}
+
+
+
+
+
+//初始化computed属性
 function initComputed(sact) {
     let { computed } = sact.$options;
     sact.$computed = {};
@@ -329,11 +345,11 @@ function initWhen(sact) {
 function initPatch(sact) {
 
     let job = function () {
-        if (!this._mounted) {
-            this.callHooks("beforeMount")
+        if (this._mounted) {
+            this.callHooks("beforeUpdate");
         }
         else {
-            this.callHooks("beforeUpdate");
+            this.callHooks("beforeMount")
         }
 
         let oldVnode = this.$vnode;

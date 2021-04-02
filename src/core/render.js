@@ -1,5 +1,5 @@
 import dom from "../api/runtime-dom.js";
-import { extend, isArray, isFunc, isObj, isString } from "../tools/untils.js"
+import { extend, isArray, isFunc, isObj, isString, sactWarn } from "../tools/untils.js"
 
 
 function render(vnode, container) {
@@ -19,10 +19,11 @@ function render(vnode, container) {
             let rel = vnode.element || renElement(vnode);
 
             //防止第一个元素插入的失败
-            if(achor === vnode.parent.element){
-                dom.insert(rel, achor);
+            if (achor === vnode.parent.element) {
+                //修复了插入第一个元素时的偏移
+                dom.insert(rel, achor, achor.firstChild);
             }
-            else{
+            else {
                 dom.insert(rel, achor.parentElement, dom.next(achor));
             }
 
@@ -34,9 +35,6 @@ function render(vnode, container) {
     }
 }
 
-function onCreated(vnode, rel) {
-    vnode.onCreated(rel);
-}
 
 function getRealVnode(vnode) {
     while (!vnode.element) {
@@ -61,7 +59,18 @@ export function patch(v1, v2, container) {
         destroryVnode(v1);
     }
     else if (v1 && v2 && sameNode(v1, v2)) {
-        patchVnode(v1, v2);
+        if (v2.isShow) {
+            callHooks(v2, "onCreated", v1.element);
+            patchVnode(v1, v2);
+        }
+        else if (v2.isHidden) {
+            callHooks(v1, "onDestrory", v1.element, () => {
+                patchVnode(v1, v2);
+            })
+        }
+        else {
+            patchVnode(v1, v2);
+        }
     }
     //实例第一次生成
     else if (!v1 && v2 && container instanceof Element) {
@@ -71,11 +80,34 @@ export function patch(v1, v2, container) {
     else if (!v1 && v2 && !container) {
         render(v2, null);
     }
+    //transiton判断是先出还是先入
+    else if (v1 && v2) {
+        translate(v1, v2);
+    }
     else {
         console.warn("[Sact-warn]:not aivailable Vnode", v1, v2);
         throw new Error(`[Sact-error]:arguments error，please check！`)
     }
 }
+
+
+//过渡，判断是先出还是先入
+function translate(v1, v2) {
+    if (v1.componentOptions) {
+        v1.componentOptions.Ctor.destory();
+    }
+
+    if (v1.onDestrory) {
+        callHooks(v1, "onDestrory", v1.element,
+            () => {
+                render(v2, v1.element);
+            });
+    }
+    else {
+        render(v2, v1.element);
+    }
+}
+
 
 function patchVnode(v1, v2) {
     v2.element = v1.element;
@@ -94,7 +126,7 @@ function patchVnode(v1, v2) {
         patchAttrs(v1, v2);
         prePatchChildren(v1.children, v2.children, v1.element);
     }
-    
+
 }
 
 
@@ -188,7 +220,7 @@ function patchAttrs(v1, v2) {
 
 //diff算法核心 比较子数组
 function patchChildren(parentEle, c1, c2) {
-    vnodesTigger(c1,"onBeforeMove");
+    vnodesTigger(c1, "onBeforeMove");
     let oldStartIdx = 0;
     let newStartIdx = 0;
     let oldEndIdx = c1.length - 1;
@@ -256,7 +288,7 @@ function patchChildren(parentEle, c1, c2) {
             destroryVnode(oc)
         }
     }
-    vnodesTigger(c1,"onMove");
+    vnodesTigger(c1, "onMove");
 }
 
 
@@ -326,9 +358,7 @@ function renElement(vnode) {
     //组件
     if (vnode.componentOptions) {
         vnode.element = renComponent(vnode, vnode.componentOptions)
-        if (vnode.onCreated) {
-            onCreated(vnode, vnode.element)
-        }
+        callHooks(vnode, "onCreated", vnode.element)
         return vnode.element;
     }
     //正常元素
@@ -344,14 +374,12 @@ function renElement(vnode) {
         dom.setAttribute(rel, "key", key);
     }
     vnode.element = rel;
-    if (vnode.onCreated) {
-        onCreated(vnode, rel)
-    }
+    callHooks(vnode, "onCreated", rel);
     return rel;
 }
 function renComponent(vnode, option) {
     let { Ctor, children } = option;
-    let { key, data } = vnode;
+    const { key, data } = vnode;
 
     //渲染的时候再实例化Ctor;
     //这样可以减少很大一部分的内存占用
@@ -420,38 +448,39 @@ function toCamelCase(name) {
 //传入父组件的参数
 function parsePropsData(Ctor, data) {
 
-    //装载并检查props
+    //装载props
     let props = {};
     let propsCheck = Ctor.$propsCheck;
     let res = {};
     for (let i of Reflect.ownKeys(data)) {
-        for (let i of Reflect.ownKeys(data)) {
-            let attrs = data[i];
-            if (isObj(attrs)) {
-                for (let key of Reflect.ownKeys(attrs)) {
-                    let attr = attrs[key];
-                    key = toCamelCase(key)
-                    props[key] = attr;
-
-                    //style 与 class除外
-                    if (key === "style" || key === "class") {
-                        res[key] = attr;
-                    }
-                }
+        let attrs = data[i];
+        //style 与 class除外
+        if (i === "style" || i === "class") {
+            res[i] = attrs;
+        }
+        else if (isObj(attrs)) {
+            for (let key of Reflect.ownKeys(attrs)) {
+                let attr = attrs[key];
+                key = toCamelCase(key);
+                props[key] = attr;
             }
         }
     }
+
+    //检查props
     if (propsCheck) {
         for (let prop of Reflect.ownKeys(propsCheck)) {
             let checker = propsCheck[prop];
             res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
+
     else if (Reflect.ownKeys(props).length > 0) {
-        console.warn(`[Sact-warn]:this component '${Ctor.name}' had not define props,
+        sactWarn(`this component '${Ctor.name}' not defined props,
                     but this component was feeded in some props '${Reflect.ownKeys(props)}',this props will be not available,
                     beacuse those maybe will cause some wrong. we do not recommond`)
     }
+
     Ctor.props = res;
     return res;
 }
@@ -522,17 +551,20 @@ function checkProps(checker, attr, key, cname) {
 
 
 function destroryVnode(vnode) {
-    if (vnode.onDestrory) {
-        vnode.onDestrory(vnode.element, () => dom.remove(vnode.element));
-    }
     if (vnode.componentOptions) {
         vnode.componentOptions.Ctor.destory();
-        dom.remove(vnode.element)
+    }
+    if (vnode.onDestrory) {
+        callHooks(vnode, "onDestrory", vnode.element, () => dom.remove(vnode.element));
     }
     else {
-        dom.remove(vnode.element)
+        dom.remove(vnode.element);
     }
 }
+function isComponent(vnode) {
+    return vnode.componentOptions;
+}
+
 
 function renChildren(rel, children) {
     if (Array.isArray(children)) {
@@ -622,18 +654,18 @@ function setDomAttrs(rel, attrs) {
     }
 }
 
- 
-function vnodesTigger(vnodes,name){
+
+function vnodesTigger(vnodes, name) {
     vnodes.forEach(v => {
-        callHooks(v,name,v.element)
+        callHooks(v, name, v.element)
     });
-} 
+}
 
 
 //触发vnode的生命周期函数
-function callHooks(vnode,name,args) {
-    if(vnode[name]){
-        vnode[name](args)
+function callHooks(vnode, name, ...args) {
+    if (vnode[name]) {
+        vnode[name](...args)
     }
 }
 

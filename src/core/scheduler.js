@@ -14,7 +14,7 @@ export function queueJob(job) {
         queueFlush();
     }
     else {
-        console.log("当前正在刷新", job)
+        // console.log("当前正在刷新", job)
     }
 }
 

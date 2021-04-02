@@ -1,5 +1,15 @@
 import Sact from "../sact.js"
-import { isArray } from "../tools/untils.js";
+import { exceptExtend, isArray, isString } from "../tools/untils.js";
+
+const prefix = "s";
+
+const animationName = {
+    ENTER: "-enter",
+    LEAVE: "-leave",
+    ACTIVE: "-active",
+    TO: "-to",
+}
+
 
 
 //防止嵌套其他抽象组件
@@ -26,41 +36,120 @@ function getPos(ele) {
     return ele.getBoundingClientRect();
 }
 
-
-function applyTranslation(c) {
-    const oldPos = c.data.pos
-    const newPos = c.data.newPos
-    const dx = oldPos.left - newPos.left
-    const dy = oldPos.top - newPos.top
-    if (dx || dy) {
-        c.data.moved = true
-        const s = c.elm.style
-        s.transform = s.WebkitTransform = `translate(${dx}px,${dy}px)`
-        s.transitionDuration = '0s'
+//初始化transtion参数
+function initdata(props) {
+    const res = {};
+    let { name } = props;
+    if (!isString(name)) {
+        name = prefix;
     }
-}
 
+    res.enter = name + animationName.ENTER;
+    res.enterActive = name + animationName.ENTER + animationName.ACTIVE;
+    res.enterTo = name + animationName.ENTER + animationName.TO;
+    res.leave = name + animationName.LEAVE;
+    res.leaveActive = name + animationName.LEAVE + animationName.ACTIVE;
+    res.leaveTo = name + animationName.LEAVE + animationName.TO;
 
-function getStyleString(style, except) {
-    let res = "";
-    for (let i = 0; i < style.length; i++) {
-        if (except.indexOf(style[i]) === -1) {
-            res += `${style[i]}:${style[style[i]]};`
-        }
-    }
+    exceptExtend(res,props);
     return res;
 }
 
-function setAnimation(rel, name, duration) {
-    rel.style.animationName = name;
-    rel.style.animationDuration = duration + "ms";
+function removeClass(ele,name) {
+    if(name && ele){
+        ele.classList.remove(name);
+    }
 }
-function removeAnimation(rel) {
-    rel.style.animation = null;
+
+function addClass(ele,name) {
+    if(name && ele){
+        ele.classList.add(name);
+    }
+}
+
+function clearClass(ele,opts) {
+    for(let i of ["enter",
+    "enterActive",
+    "enterTo",
+    "leave",
+    "leaveTo",
+    "leaveActive"]){
+        if(ele.classList.contains(opts[i])){
+            removeClass(ele,opts[i]);
+        }
+    }
 }
 
 
-//用来添加动画的
+//创建时插入的类名
+function whenCreate(ele) {
+
+    const self = this;
+    const {opts} = this._data;
+
+    
+    function _created() {
+        removeClass(ele,opts.enterTo);
+        removeClass(ele,opts.enterActive);
+        ele.removeEventListener("transitionend", _created);
+        ele.removeEventListener("animationend",_created);
+    }
+
+
+    //先添加enter类
+    addClass(ele,opts.enter);
+    ele.addEventListener("transitionend", _created);
+    ele.addEventListener("animationend",_created);
+
+    //创建完元素后添加enterActive和enterTo
+    setTimeout(()=>{
+        clearClass(ele,opts);
+        addClass(ele,opts.enterActive);
+        addClass(ele,opts.enterTo);
+    },0)
+}
+
+//移除时插入的类名
+function whenLeave(ele,done) {
+    const self = this;
+    const {opts} = this._data;
+
+    function _leaved() {
+        removeClass(ele,opts.leaveTo);
+        removeClass(ele,opts.leaveActive);
+        done && done();
+        self._isLeaving = false;
+        ele.removeEventListener("transitionend", _leaved);
+        ele.removeEventListener("animationend",_leaved);
+    }
+
+    //先添加leave类
+    addClass(ele,opts.leave);
+
+    ele.addEventListener("transitionend", _leaved);
+    ele.addEventListener("animationend",_leaved);
+
+    //添加标记防止重复
+    this._isLeaving = true;
+    //然后异步添加leaveActive和leaveTo
+    setTimeout(()=>{
+        clearClass(ele,opts);
+        addClass(ele,opts.leaveActive);
+        addClass(ele,opts.leaveTo);
+    },0)
+}
+
+
+function dealShow(data,child) {
+    if(child.data && child.data.style){
+        const nowShow = child.data.style.display === "none" ? false : true;
+        child.isShow = !!(!data.lastShow && nowShow);
+        child.isHidden = !!(data.lastShow && !nowShow);
+        data.lastShow = nowShow;
+    }
+}
+
+
 export default Sact.component({
     name: 'transition',
     isAbstract: true,
@@ -72,114 +161,43 @@ export default Sact.component({
                 return value === "in-out" || value === "out-in";
             }
         },
-        "enter": "string",//元素被插入的时候添加的类名
-        "leave": "string", //元素被删除的时候添加的类名
-        "duration": { //移动元素的持续时间
+        "name": "string",//自动会在前面加上s-的前缀找到class
+        "enter": "string",//元素添加前的类
+        "enterActive": "string",//整个元素创建期间的类名
+        "enterTo": "string",//元素被插入后的类名
+        "leave": "string", //元素被删除前的类名
+        "leaveActive": "string",//元素删除期间的类名
+        "enterTo": "string",//元素被删除（leave移除后）后的类名
+        "duration": { //动画的持续时间
             type: "string",
             default: "500"
         },
     },
-    beforeUpdate(){
-        console.log(this.$ele.tagName,getPos(this.$ele));
+    beforeMount() {
+        this._data = {};
+        this._data.opts = initdata(this.props);
+    },
+    mounted(){
+        this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
     updated(){
-        console.log(this.$ele.tagName,getPos(this.$ele));
+        this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
     render(h) {
         let child = getRealChild(getFirstComponentChild(this.$slot["default"]))
+        
         if (!child) {
             return;
         }
-        let self = this;
-        let { enter, leave, duration } = this.props;
-
-        function onCreated(ele) {
-            function enter() {
-                ele.classList.remove(self.props.enter);
-                ele.removeEventListener("animationend", enter)
-            }
-
-            ele.classList.add(self.props.enter);
-            ele.addEventListener("animationend", enter);
-            ele.addEventListener("transitionend", enter);
-        }
-        function onLeave(ele, done) {
-            function _leave() {
-                done();
-            }
-            ele.classList.add(self.props.leave);
-            ele.addEventListener("animationend", _leave);
-            ele.addEventListener("transitionend", _leave);
+        if(this._isLeaving){
+            return this.oldChild;
         }
 
-        function onBeforeMove(ele) {
-            console.log(ele.tagName,getPos(ele));
-        }
+        dealShow(this._data,child)
 
-
-
-
-        function onMove(ele) {
-            if (!self.moving) {
-                self.flip.last();
-                self.flip.invert();
-                self.moving = true;
-                self.flip.play();
-                function cancel() {
-                    self.moving = false;
-                    ele.removeEventListener("transitionend", cancel);
-                }
-                ele.addEventListener("transitionend", cancel);
-            }
-            else {
-                self.moving = true;
-                self.flip.play();
-            }
-
-            // if (!self.moving) {
-            //     self.oldStyle = getStyleString(ele.style, ["transition", "transform"]);
-            //     let Frist = self.Frist;
-            //     let Last = getRecord(ele);
-
-            //     let state = [Frist.left - Last.left, Frist.top - Last.top, Frist.width / Last.width];
-
-            //     function cancel() {
-            //         self.moving = false;
-            //         ele.style.transition = null;
-            //         ele.style.transform = null;
-            //         ele.removeEventListener("transitionend", cancel);
-            //     }
-
-            //     ele.addEventListener("transitionend", cancel);
-            //     ele.style.transformOrigin = 'top left';
-            //     ele.style.transform = `translate3d(${state[0]}px, ${state[1]}px, 0)scale(${state[2]})`;
-            //     self.moving = true;
-            //     setTimeout(() => {
-            //         ele.style.transition = `transform ${duration}ms`;
-            //         ele.style.transform = `translate3d(0, 0, 0) scale(1)`;
-            //     }, 0)
-            // }
-            // else {
-            //     setTimeout(() => {
-            //         ele.style.transition = `transform ${duration}ms`;
-            //         ele.style.transform = `translate3d(0, 0, 0) scale(1)`;
-            //     }, 0)
-            // }
-
-
-        }
-        //处理节点
-
-        if (enter) {
-            child.onCreated = onCreated;
-        }
-        if (leave) {
-            child.onDestrory = onLeave;
-        }
-
-        // this.wrapVnode.onMove = onMove;
-        // this.wrapVnode.onBeforeMove = onBeforeMove;
-        //继承属性
+        child.onCreated = whenCreate.bind(this);
+        child.onDestrory = whenLeave.bind(this);
+        child._data = this._data;
         child.achor = this.wrapVnode.achor;
         child.parent = this.wrapVnode.parent;
         this.oldChild = child;

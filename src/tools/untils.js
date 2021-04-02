@@ -1,6 +1,16 @@
 const baseTypeList = [
     "boolean", "number", "string", "symbol", "undefined"
 ]
+
+export function sactWarn(text, ...args) {
+    console.warn("%c [Sact-Warn]:" + text,
+        "color:red;font-size:16px;",
+        ...args);
+}
+
+
+
+
 //获取属性并删除
 export function getAndRemoveAttr(el, attr) {
     let val;
@@ -31,6 +41,17 @@ export function extend(obj, res) {
     }
     for (let i of Reflect.ownKeys(res)) {
         obj[i] = res[i]
+    }
+    return obj;
+}
+export function exceptExtend(obj, res) {
+    if (!isObj(res)) {
+        return obj;
+    }
+    for (let i of Reflect.ownKeys(res)) {
+        if (res[i] !== undefined) {
+            obj[i] = res[i]
+        }
     }
     return obj;
 }

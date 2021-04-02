@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-cn">
 
 <head>
     <meta charset="UTF-8">
@@ -32,24 +32,16 @@
         display: flex;
     }
 
-    .fadein {
-        animation: fade 1s;
+    /* 可以设置不同的进入和离开动画 */
+    /* 设置持续时间和动画函数 */
+    .slide-fade-enter-active,
+    .slide-fade-leave-active {
+        transition: all .3s ease;
     }
 
-    .fadeout {
-        animation: fadeo 1s;
-    }
-
-    @keyframes fade {
-        from {
-            opacity: 0;
-        }
-    }
-
-    @keyframes fadeo {
-        to {
-            opacity: 0;
-        }
+    .slide-fade-enter,
+    .slide-fade-leave-to {
+        opacity: 0;
     }
 </style>
 
@@ -60,14 +52,17 @@
         <p :style="{[ww]:'red'}">{{pci}}</p>
         <p s-for="ss in qq">{{ss}}</p>
         <im-qq></im-qq> -->
-        <im-qq s-if="show"></im-qq>
-        <button @click="show = !show">adasdsa</button>
-        <!-- <transition duration="1000" enter="fadein" :key="ww" s-for="ww in qq">
+        <transition name="slide-fade">
+            <component s-show="show" :is="ccc"></component>
+        </transition>
+        <button @click="show  = !show">点我！</button>
+        <!-- <transition duration="1000" name="slide-fade" :key="ww" s-for="ww in qq">
             <p style="display: inline-block;padding:8px;background-color: #fff;">{{ww}}</p>
         </transition>
         <transition duration="1000">
             <button @click="pp">添加</button>
-        </transition> -->
+        </transition>
+        <button @click="del">删除</button> -->
     </div>
 </body>
 <script type="module">
@@ -82,32 +77,21 @@
     window.qq = new Sact({
         el: "#root",
         data: {
-            qq: [1, 2,3,4,5,6],
+            qq: [1, 2, 3, 4],
             show: false,
             pci: "12323",
             st: "color",
+            ccc: "im-qq",
         },
         method: {
             pp() {
-                this.data.qq = _.shuffle(this.data.qq);
+                this.data.qq.push(pp++);
             },
-            vv(e) {
-                
-            },
-        },
-        computed: {
-            ww() {
-                if (this.data.show) {
-                    return "color"
-                }
-                else {
-                    return "background-color"
-                }
+            del() {
+                this.data.qq.pop();
             }
         },
-        component: {
-            qq, transition
-        }
+        component: { qq, transition }
     })
 </script>
 

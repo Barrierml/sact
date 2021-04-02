@@ -1,4 +1,4 @@
-import { isArray } from "../tools/untils.js";
+import { isArray, sactWarn } from "../tools/untils.js";
 
 export const vnodeType = {
     static: 1,
@@ -46,11 +46,18 @@ export class Vnode {
 
 
 
+
 export function createVnode(vm, a, b, c, type, zid) {
     const { components } = vm;
-    if (Reflect.ownKeys(components).indexOf(a) > -1) { //当a是自定义组件时
+    //组件
+    if (Reflect.ownKeys(components).indexOf(a) > -1) {
         return createComponent(components[a], b, vm, c, a, zid, type);
     }
+    //自定义组件
+    else if (a === "component") {
+        return createDynamicComponent(vm, b, c, components, zid, type);
+    }
+    //插槽
     else if (a === "slot") {
         return createSolt(vm, b, c);
     }
@@ -58,6 +65,27 @@ export function createVnode(vm, a, b, c, type, zid) {
         return new Vnode(vm, a, b, c, undefined, false, zid, type);
     }
 }
+
+
+//创建自定义组件
+export function createDynamicComponent(vm, data, children, components, zid, type) {
+    const ComponentName = (data.attrs && data.attrs.is) || undefined;
+    if (ComponentName
+        && components
+        && Reflect.ownKeys(components).indexOf(ComponentName) > -1) {
+        Reflect.deleteProperty(data.attrs,"is");
+        return createComponent(components[ComponentName], data, vm, children, zid, type);
+    }
+    else {
+        sactWarn(`${vm.name} don't have component ${ComponentName},please check your name.`,
+            vm);
+        return undefined;
+    }
+}
+
+
+
+
 
 export function createComponent(Ctor, data, context, children, tag, zid, type) {
     [children, type] = genVdomChildren(children)
