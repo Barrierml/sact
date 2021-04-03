@@ -47,16 +47,19 @@
 
 
 <body>
-    <div id="root" class="content">
+    <div id="root"  class="content">
         <!-- <p class="qq" s-show="show" :style="{display:'flex'}">123123123</p>
         <p :style="{[ww]:'red'}">{{pci}}</p>
         <p s-for="ss in qq">{{ss}}</p>
         <im-qq></im-qq> -->
         <transition name="slide-fade">
-            <component s-show="show" :is="ccc"></component>
+            <div>
+                <component s-show="show" :is="ccc"></component>
+                <button @click="show  = !show">点我！</button>
+                <button @click="pp">点我！</button>
+            </div>
         </transition>
-        <button @click="show  = !show">点我！</button>
-        <button @click="pp">点我！</button>
+
         <!-- <transition duration="1000" name="slide-fade" :key="ww" s-for="ww in qq">
             <p style="display: inline-block;padding:8px;background-color: #fff;">{{ww}}</p>
         </transition>

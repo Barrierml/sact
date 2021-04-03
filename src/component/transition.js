@@ -58,15 +58,15 @@ function initdata(props) {
     return res;
 }
 
-function removeClass(ele,name) {
-    if(name && ele){
-        ele.classList.remove(name);
+function removeClass(ele,...cls) {
+    if(cls && ele){
+        ele.classList.remove(cls);
     }
 }
 
-function addClass(ele,name) {
-    if(name && ele){
-        ele.classList.add(name);
+function addClass(ele,...cls) {
+    if(cls && ele){
+        ele.classList.add(...cls);
     }
 }
 
@@ -92,8 +92,7 @@ function whenCreate(ele) {
 
     
     function _created() {
-        removeClass(ele,opts.enterTo);
-        removeClass(ele,opts.enterActive);
+        removeClass(ele,opts.enterTo,opts.enterActive);
         ele.removeEventListener("transitionend", _created);
         ele.removeEventListener("animationend",_created);
     }
@@ -107,8 +106,7 @@ function whenCreate(ele) {
     //创建完元素后添加enterActive和enterTo
     setTimeout(()=>{
         clearClass(ele,opts);
-        addClass(ele,opts.enterActive);
-        addClass(ele,opts.enterTo);
+        addClass(ele,opts.enterActive,opts.enterTo);
     },0)
 }
 
@@ -116,10 +114,16 @@ function whenCreate(ele) {
 function whenLeave(ele,done) {
     const self = this;
     const {opts} = this._data;
+    const s = ele.style;
+
+    //为none的元素不会触发动画结束事件，所以直接结束动画
+    if(s.display === "none"){
+        done && done();
+        return;
+    }
 
     function _leaved() {
-        removeClass(ele,opts.leaveTo);
-        removeClass(ele,opts.leaveActive);
+        removeClass(ele,opts.leaveTo,opts.leaveActive);
         done && done();
         self._isLeaving = false;
         ele.removeEventListener("transitionend", _leaved);
@@ -137,8 +141,7 @@ function whenLeave(ele,done) {
     //然后异步添加leaveActive和leaveTo
     setTimeout(()=>{
         clearClass(ele,opts);
-        addClass(ele,opts.leaveActive);
-        addClass(ele,opts.leaveTo);
+        addClass(ele,opts.leaveActive,opts.leaveTo);
     },0)
 }
 
@@ -170,7 +173,7 @@ export const transitionProps =  {
         type: "string",
         default: "500"
     },
-},
+}
 
 
 
