@@ -177,7 +177,7 @@ export const transitionProps =  {
 
 
 
-export default Sact.component({
+export default {
     name: 'transition',
     isAbstract: true,
     isShowAttr: false,
@@ -212,4 +212,4 @@ export default Sact.component({
         this.oldChild = child;
         return child;
     }
-})
+}

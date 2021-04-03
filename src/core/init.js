@@ -3,11 +3,13 @@ import Parse from "./Parser.js";
 import Generate from "./generate.js";
 import { effect, recordInstanceBoundEffect, withComputedReactive } from "./new_reactivity.js";
 import { createVnode, createFor } from "./vnode.js";
-import Sact from "../sact.js"
+import Sact from "../sact.js";
 import { patch } from "./render.js";
-import { computedNode } from "./computed.js"
+import { computedNode } from "./computed.js";
+import transition from "../component/transition.js";
 
 let cid = 0;
+
 export default function initAll(options) {
     this.$options = options;
     initWhen(this);
@@ -65,6 +67,11 @@ function initElement(sact) {
 
     }
     sact.$template = template;
+
+    //用于存储真实元素
+    //如果是节点则存储sact实例
+    //如果有多个同名变量则返回一个列表
+    sact.$refs = {};
 }
 
 //判断绑定的元素是否是仓库模式
@@ -102,10 +109,10 @@ function traverse(value, seen = new Set()) {
 
 
 //初始化watcher
-function initWatch(sact){
-    let {watch} = sact.$options;
+function initWatch(sact) {
+    let { watch } = sact.$options;
     sact.$watch = {};
-    if(isObj(watch)){
+    if (isObj(watch)) {
     }
 }
 
@@ -117,7 +124,7 @@ function initWatch(sact){
 function initComputed(sact) {
     let { computed } = sact.$options;
     sact.$computed = {};
-    
+
     if (isObj(computed)) {
         for (const key in computed) {
             let fn = computed[key];
@@ -159,13 +166,13 @@ function initData(sact) {
 //初始化方法
 function initMethod(sact) {
     const options = sact.$options;
-    if (isObj(options.method)) {
-        let { method } = options;
-        for (let funName of Reflect.ownKeys(method)) {
-            if (!typeof method[funName] === "function") {
+    let m = options.method || options.methods;
+    if (isObj(m)) {
+        for (let funName of Reflect.ownKeys(m)) {
+            if (!typeof m[funName] === "function") {
                 throw new Error(`${funName} 不为function，请检查！`)
             }
-            sact[funName] = options.method[funName].bind(sact);
+            sact[funName] = m[funName].bind(sact);
         };
     }
     sact.effects = [];
@@ -185,13 +192,20 @@ function initComponent(sact) {
         sact.isShowAttr = options.isShowAttr === undefined ? true : false; //默认显示属性在组件上
         sact._shouldMount = false;
     }
-    sact.components = {};
+    //内置keep-alive 与 transition;
+    sact.components = { transition: Sact.component(transition) };
     if (isObj(component)) { //使用组件时,将组件添加到环境中
         for (let con of Reflect.ownKeys(component)) {
-            sact.components[component[con].sname] = component[con];
+            if (isObj(component[con])) {
+                sact.components[component[con].sname] = Sact.component(component[con]);
+            }
+            else if (component[con].isComponent) {
+                sact.components[component[con].sname] = component[con];
+            }
         }
     }
 }
+
 
 //初始化渲染功能
 function initRender(sact) {

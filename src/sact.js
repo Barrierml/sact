@@ -26,6 +26,7 @@ Sact.component = function (options) {
   }
   let Ctor = function () { return new Sact({ ...options, isComponent: true }) }
   Ctor.sname = options.name;
+  Ctor.isComponent = true;
   return Ctor;
 }
 

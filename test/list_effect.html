@@ -6,8 +6,6 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
-    <script src="./flip.js"></script>
-    <script src="https://cdn.bootcdn.net/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
 </head>
 
 <style>
@@ -34,13 +32,13 @@
 
     /* 可以设置不同的进入和离开动画 */
     /* 设置持续时间和动画函数 */
-    .slide-fade-enter-active,
-    .slide-fade-leave-active {
+    .s-enter-active,
+    .s-leave-active {
         transition: all .3s ease;
     }
 
-    .slide-fade-enter,
-    .slide-fade-leave-to {
+    .s-enter,
+    .s-leave-to {
         opacity: 0;
     }
 </style>
@@ -48,25 +46,15 @@
 
 <body>
     <div id="root"  class="content">
-        <!-- <p class="qq" s-show="show" :style="{display:'flex'}">123123123</p>
-        <p :style="{[ww]:'red'}">{{pci}}</p>
-        <p s-for="ss in qq">{{ss}}</p>
-        <im-qq></im-qq> -->
-        <transition name="slide-fade">
+        <transition>
             <div>
-                <component s-show="show" :is="ccc"></component>
-                <button @click="show  = !show">点我！</button>
-                <button @click="pp">点我！</button>
+                <button :ref="st" @click="show  = !show">点我！</button>
+                <button  @click="pp">点我！</button>
+                <transition>
+                    <component  s-if="show" :is="ccc"></component>
+                </transition>
             </div>
         </transition>
-
-        <!-- <transition duration="1000" name="slide-fade" :key="ww" s-for="ww in qq">
-            <p style="display: inline-block;padding:8px;background-color: #fff;">{{ww}}</p>
-        </transition>
-        <transition duration="1000">
-            <button @click="pp">添加</button>
-        </transition>
-        <button @click="del">删除</button> -->
     </div>
 </body>
 <script type="module">
@@ -100,7 +88,7 @@
                 this.data.qq.pop();
             }
         },
-        component: { qq, transition, ww }
+        component: { qq, ww }
     })
 </script>
 

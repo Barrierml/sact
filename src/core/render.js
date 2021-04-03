@@ -1,5 +1,5 @@
 import dom from "../api/runtime-dom.js";
-import { extend, isArray, isFunc, isObj, isString, sactWarn } from "../tools/untils.js"
+import { extend, getAndRemoveVnodeAttr, isArray, isFunc, isObj, isString, sactWarn } from "../tools/untils.js"
 
 
 function render(vnode, container) {
@@ -102,6 +102,7 @@ function translate(v1, v2) {
             () => {
                 render(v2, v1.element);
             });
+        console
     }
     else {
         render(v2, v1.element);
@@ -355,15 +356,21 @@ function renElement(vnode) {
         vnode.element = document.createTextNode(vnode.text);
         return vnode.element;
     }
+
+    const ref = getAndRemoveVnodeAttr(vnode, "ref");
+    
     //组件
     if (vnode.componentOptions) {
         vnode.element = renComponent(vnode, vnode.componentOptions)
         callHooks(vnode, "onCreated", vnode.element)
+        addRefs(vnode,ref);
         return vnode.element;
     }
+
     //正常元素
-    let { tag, data, children, key } = vnode;
-    let rel = (vnode.element = document.createElement(tag));
+    const { tag, data, children, key } = vnode;
+    const rel = (vnode.element = document.createElement(tag));
+
     if (data) {
         setAttrs(rel, data, vnode["context"]);
     }
@@ -373,10 +380,33 @@ function renElement(vnode) {
     if (key) {
         dom.setAttribute(rel, "key", key);
     }
+
     vnode.element = rel;
+    addRefs(vnode,ref);
+
     callHooks(vnode, "onCreated", rel);
     return rel;
 }
+
+//添加ref
+function addRefs(vnode,ref) {
+    if (ref) {
+        const el = vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element; 
+        const { context } = vnode;
+
+        let oldRef = context.$refs[ref];
+        if(oldRef && isArray(oldRef)){
+            oldRef.push(el);
+        }
+        else if(oldRef){
+            context.$refs[ref] = [oldRef,el];
+        }
+        else{
+            context.$refs[ref] = el;
+        }
+    }
+}
+
 function renComponent(vnode, option) {
     let { Ctor, children } = option;
     const { key, data } = vnode;
