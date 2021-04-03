@@ -1,5 +1,5 @@
 import dom from "../api/runtime-dom.js";
-import { extend, getAndRemoveVnodeAttr, isArray, isFunc, isObj, isString, sactWarn } from "../tools/untils.js"
+import { extend, getVnodeAttr, isArray, isFunc, isObj, isString, sactWarn } from "../tools/untils.js"
 
 
 function render(vnode, container) {
@@ -120,6 +120,7 @@ function patchVnode(v1, v2) {
     else if (v1.componentOptions && v2.componentOptions) {
         patchCompent(v1, v2);
     }
+    //静态节点
     else if (v2.type === 1) {
         return;
     }
@@ -127,7 +128,28 @@ function patchVnode(v1, v2) {
         patchAttrs(v1, v2);
         prePatchChildren(v1.children, v2.children, v1.element);
     }
+    patchRefs(v1, v2);
 
+}
+
+
+function getRef(vnode) {
+    return vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element;
+}
+
+function patchRefs(v1, v2) {
+    const ref1 = getVnodeAttr(v1, "ref");
+    const ref2 = getVnodeAttr(v2, "ref");
+    const el2 = getRef(v2);
+    if (ref1 && ref2) {
+        if (ref1 !== ref2) {
+            destroryRefs(v1);
+            addRefs(v2);
+        }
+        else {
+            destroryRefs(v1, el2);
+        }
+    }
 }
 
 
@@ -357,13 +379,11 @@ function renElement(vnode) {
         return vnode.element;
     }
 
-    const ref = getAndRemoveVnodeAttr(vnode, "ref");
-    
     //组件
     if (vnode.componentOptions) {
         vnode.element = renComponent(vnode, vnode.componentOptions)
         callHooks(vnode, "onCreated", vnode.element)
-        addRefs(vnode,ref);
+        addRefs(vnode);
         return vnode.element;
     }
 
@@ -382,26 +402,27 @@ function renElement(vnode) {
     }
 
     vnode.element = rel;
-    addRefs(vnode,ref);
+    addRefs(vnode);
 
     callHooks(vnode, "onCreated", rel);
     return rel;
 }
 
 //添加ref
-function addRefs(vnode,ref) {
+function addRefs(vnode) {
+    const ref = getVnodeAttr(vnode, "ref");
     if (ref) {
-        const el = vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element; 
+        const el = vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element;
         const { context } = vnode;
 
         let oldRef = context.$refs[ref];
-        if(oldRef && isArray(oldRef)){
+        if (oldRef && isArray(oldRef)) {
             oldRef.push(el);
         }
-        else if(oldRef){
-            context.$refs[ref] = [oldRef,el];
+        else if (oldRef) {
+            context.$refs[ref] = [oldRef, el];
         }
-        else{
+        else {
             context.$refs[ref] = el;
         }
     }
@@ -590,7 +611,30 @@ function destroryVnode(vnode) {
     else {
         dom.remove(vnode.element);
     }
+    destroryRefs(vnode);
 }
+
+
+function destroryRefs(vnode, replace) {
+    const ref = getVnodeAttr(vnode, "ref");
+    if (ref) {
+        const el = vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element;
+        const { context } = vnode;
+
+        let oldRef = context.$refs[ref];
+        if (oldRef && isArray(oldRef)) {
+            const index = oldRef.indexOf(el);
+            if (index > -1) {
+                replace ? oldRef.splice(index, 1, replace) : oldRef.splice(index, 1);
+            }
+        }
+        else if (oldRef) {
+            replace ? context.$refs[ref] = replace : Reflect.deleteProperty(context.$refs, ref);
+        }
+    }
+}
+
+
 function isComponent(vnode) {
     return vnode.componentOptions;
 }

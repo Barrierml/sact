@@ -49,10 +49,12 @@
         <transition>
             <div>
                 <button :ref="st" @click="show  = !show">点我！</button>
-                <button  @click="pp">点我！</button>
+                <button ref="butt" s-for="q in qq"  @click="pp">点我！</button>
                 <transition>
                     <component  s-if="show" :is="ccc"></component>
                 </transition>
+                <button @click="add" >add</button>
+                <button @click="del" >del</button>
             </div>
         </transition>
     </div>
@@ -83,6 +85,9 @@
         method: {
             pp() {
                 this.data.ccc = this.data.ccc === "im-ww" ? "im-qq" : "im-ww";
+            },
+            add(){
+                this.data.qq.push(pp++);
             },
             del() {
                 this.data.qq.pop();

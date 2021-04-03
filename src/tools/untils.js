@@ -10,7 +10,7 @@ export function sactWarn(text, ...args) {
 
 
 
-//获取vnode.data属性删除并返回值
+//获取vnode.data.attrs属性删除并返回值
 export function getAndRemoveVnodeAttr(vnode,attrName) {
     let val;
     if(val = vnode.data 
@@ -21,6 +21,16 @@ export function getAndRemoveVnodeAttr(vnode,attrName) {
     }
     return val;
 }
+
+//获取vnode.data.attrs属性
+export function getVnodeAttr(vnode,attrName) {
+    let val;
+    val = vnode.data 
+        && vnode.data.attrs 
+        && vnode.data.attrs[attrName];
+    return val;
+}
+
 
 //获取属性并删除
 export function getAndRemoveAttr(el, attr) {
