@@ -34,7 +34,7 @@
     /* 设置持续时间和动画函数 */
     .s-enter-active,
     .s-leave-active {
-        transition: all .3s ease;
+        transition: all 1s ease;
     }
 
     .s-enter,
@@ -45,16 +45,18 @@
 
 
 <body>
-    <div id="root"  class="content">
+    <div id="root" class="content">
         <transition>
             <div>
                 <button :ref="st" @click="show  = !show">点我！</button>
-                <button ref="butt" s-for="q in qq"  @click="pp">点我！</button>
-                <transition>
-                    <component  s-if="show" :is="ccc"></component>
+                <transition s-for="q in qq">
+                    <button ref="butt" @click="pp">点我！</button>
                 </transition>
-                <button @click="add" >add</button>
-                <button @click="del" >del</button>
+                <transition>
+                    <component s-show="show" :is="ccc"></component>
+                </transition>
+                <button @click="add">add</button>
+                <button @click="del">del</button>
             </div>
         </transition>
     </div>
@@ -86,7 +88,7 @@
             pp() {
                 this.data.ccc = this.data.ccc === "im-ww" ? "im-qq" : "im-ww";
             },
-            add(){
+            add() {
                 this.data.qq.push(pp++);
             },
             del() {

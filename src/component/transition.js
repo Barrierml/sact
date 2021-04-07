@@ -60,7 +60,7 @@ function initdata(props) {
 
 function removeClass(ele,...cls) {
     if(cls && ele){
-        ele.classList.remove(cls);
+        ele.classList.remove(...cls);
     }
 }
 
@@ -100,9 +100,8 @@ function whenCreate(ele) {
 
     //先添加enter类
     addClass(ele,opts.enter);
-    ele.addEventListener("transitionend", _created);
+    ele.addEventListener("transitionend", self.enterCB = _created);
     ele.addEventListener("animationend",_created);
-
     //创建完元素后添加enterActive和enterTo
     setTimeout(()=>{
         clearClass(ele,opts);
@@ -133,7 +132,7 @@ function whenLeave(ele,done) {
     //先添加leave类
     addClass(ele,opts.leave);
 
-    ele.addEventListener("transitionend", _leaved);
+    ele.addEventListener("transitionend", self.leaveCb = _leaved);
     ele.addEventListener("animationend",_leaved);
 
     //添加标记防止重复
@@ -193,13 +192,17 @@ export default {
         this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
     render(h) {
+
+        if(this._isLeaving){
+            if(this.leaveCb){
+                this.leaveCb.call(this);
+            }
+        }
+
         let child = getRealChild(getFirstComponentChild(this.$slot["default"]))
 
         if (!child) {
             return;
-        }
-        if(this._isLeaving){
-            return this.oldChild;
         }
 
         dealShow(this._data,child)
