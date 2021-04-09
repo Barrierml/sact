@@ -11,8 +11,18 @@
 
     </style>
     <div id="root">
-
+        <div s-if="show">
+            123
+        </div>
     </div>
 </body>
 <script src="../dist/sact.js"></script>
+<script>
+    Sact.link()
+    .el("#root")
+    .data({
+        show:true
+    })
+    .do;
+</script>
 </html>

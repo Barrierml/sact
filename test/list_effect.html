@@ -36,7 +36,6 @@
     .s-leave-active {
         transition: all 1s ease;
     }
-
     .s-enter,
     .s-leave-to {
         opacity: 0;
@@ -53,7 +52,13 @@
                     <button ref="butt" @click="pp">点我！</button>
                 </transition>
                 <transition>
-                    <component s-show="show" :is="ccc"></component>
+                    <div s-if="show">
+                        <transition>
+                            <div>
+                                123
+                            </div>
+                        </transition>
+                    </div>
                 </transition>
                 <button @click="add">add</button>
                 <button @click="del">del</button>

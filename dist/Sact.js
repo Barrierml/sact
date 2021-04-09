@@ -1545,9 +1545,9 @@ function patchVnode(v1, v2) {
         patchCompent(v1, v2);
     }
     //静态节点
-    else if (v2.type === 1) {
-        return;
-    }
+    // else if (v2.type === 1) {
+    //     return;
+    // }
     else {
         patchAttrs(v1, v2);
         prePatchChildren(v1.children, v2.children, v1.element);
@@ -2235,6 +2235,7 @@ function getFirstComponentChild(vnodes) {
         return vnodes[0];
     }
     else if(isArray(vnodes) && vnodes.length > 1){
+        console.log(vnodes);
         throw new Error("transiton just recive a child, more children please use transition-group")
     }
     else {

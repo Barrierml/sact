@@ -28,6 +28,7 @@ function getFirstComponentChild(vnodes) {
         return vnodes[0];
     }
     else if(isArray(vnodes) && vnodes.length > 1){
+        console.log(vnodes);
         throw new Error("transiton just recive a child, more children please use transition-group")
     }
     else {

@@ -121,9 +121,9 @@ function patchVnode(v1, v2) {
         patchCompent(v1, v2);
     }
     //静态节点
-    else if (v2.type === 1) {
-        return;
-    }
+    // else if (v2.type === 1) {
+    //     return;
+    // }
     else {
         patchAttrs(v1, v2);
         prePatchChildren(v1.children, v2.children, v1.element);

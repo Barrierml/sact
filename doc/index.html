@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Document</title>
+  <title>Sact 一个轻型、好用的半前端框架</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
   <meta name="description" content="Description">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
   <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mdui@1.0.1/dist/css/mdui.min.css"
+    integrity="sha384-cLRrMq39HOZdvE0j6yBojO4+1PrHfB7a9l5qLcmRm/fiWXYY+CndJPmyu5FV/9Tw" crossorigin="anonymous" />
   <link rel="stylesheet" href="./style.css">
 </head>
+
 <body>
   <div id="root"></div>
   <script>
@@ -17,14 +21,21 @@
       repo: 'https://github.com/Barrierml/sact',
       loadSidebar: true,
       executeScript: true,
-      subMaxLevel: 2,
-      coverpage: true,
+      subMaxLevel: 3,
       el: '#root',
+      coverpage: true,
+      pagination: {
+        previousText: '上一章节',
+        nextText: '下一章节',
+        crossChapter: true,
+      },
     }
   </script>
-    <!-- sact -->
+  <!-- sact -->
   <script src="./sact.js"></script>
   <!-- Docsify v4 -->
   <script src="//cdn.jsdelivr.net/npm/docsify@4"></script>
+  <script src="//unpkg.com/docsify-pagination/dist/docsify-pagination.min.js"></script>
 </body>
+
 </html>

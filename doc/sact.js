@@ -96,6 +96,37 @@ __webpack_require__.r(__webpack_exports__);
 const baseTypeList = [
     "boolean", "number", "string", "symbol", "undefined"
 ]
+
+function sactWarn(text, ...args) {
+    console.warn("%c [Sact-Warn]:" + text,
+        "color:red;font-size:16px;",
+        ...args);
+}
+
+
+
+//获取vnode.data.attrs属性删除并返回值
+function getAndRemoveVnodeAttr(vnode,attrName) {
+    let val;
+    if(val = vnode.data 
+        && vnode.data.attrs 
+        && vnode.data.attrs[attrName])
+    {
+        Reflect.deleteProperty(vnode.data.attrs,attrName);
+    }
+    return val;
+}
+
+//获取vnode.data.attrs属性
+function getVnodeAttr(vnode,attrName) {
+    let val;
+    val = vnode.data 
+        && vnode.data.attrs 
+        && vnode.data.attrs[attrName];
+    return val;
+}
+
+
 //获取属性并删除
 function getAndRemoveAttr(el, attr) {
     let val;
@@ -126,6 +157,17 @@ function extend(obj, res) {
     }
     for (let i of Reflect.ownKeys(res)) {
         obj[i] = res[i]
+    }
+    return obj;
+}
+function exceptExtend(obj, res) {
+    if (!isObj(res)) {
+        return obj;
+    }
+    for (let i of Reflect.ownKeys(res)) {
+        if (res[i] !== undefined) {
+            obj[i] = res[i]
+        }
     }
     return obj;
 }
@@ -464,11 +506,18 @@ class Vnode {
 
 
 
+
 function createVnode(vm, a, b, c, type, zid) {
     const { components } = vm;
-    if (Reflect.ownKeys(components).indexOf(a) > -1) { //当a是自定义组件时
+    //组件
+    if (Reflect.ownKeys(components).indexOf(a) > -1) {
         return createComponent(components[a], b, vm, c, a, zid, type);
     }
+    //自定义组件
+    else if (a === "component") {
+        return createDynamicComponent(vm, b, c, components, zid, type);
+    }
+    //插槽
     else if (a === "slot") {
         return createSolt(vm, b, c);
     }
@@ -476,6 +525,25 @@ function createVnode(vm, a, b, c, type, zid) {
         return new Vnode(vm, a, b, c, undefined, false, zid, type);
     }
 }
+
+
+//创建自定义组件
+function createDynamicComponent(vm, data, children, components, zid, type) {
+    const ComponentName = (data.attrs && data.attrs.is) || undefined;
+    if (ComponentName
+        && components
+        && Reflect.ownKeys(components).indexOf(ComponentName) > -1) {
+        Reflect.deleteProperty(data.attrs,"is");
+        return createComponent(components[ComponentName], data, vm, children, ComponentName , zid, type);
+    }
+    else {
+        sactWarn(`${vm.name} don't have component ${ComponentName},please check your name.`,
+            vm);
+        return undefined;
+    }
+}
+
+
 
 function createComponent(Ctor, data, context, children, tag, zid, type) {
     [children, type] = genVdomChildren(children)
@@ -488,6 +556,9 @@ function createComponent(Ctor, data, context, children, tag, zid, type) {
     }, false, zid, type);
     return vnode
 }
+
+
+
 function createSolt(vm, data, children) {
     if (vm.$slot) {
         let slotName = data.attrs && data.attrs.name;
@@ -933,7 +1004,7 @@ function queueJob(job) {
         queueFlush();
     }
     else {
-        console.log("当前正在刷新", job)
+        // console.log("当前正在刷新", job)
     }
 }
 
@@ -1372,10 +1443,11 @@ function render_render(vnode, container) {
             let rel = vnode.element || renElement(vnode);
 
             //防止第一个元素插入的失败
-            if(achor === vnode.parent.element){
-                runtime_dom.insert(rel, achor);
+            if (achor === vnode.parent.element) {
+                //修复了插入第一个元素时的偏移
+                runtime_dom.insert(rel, achor, achor.firstChild);
             }
-            else{
+            else {
                 runtime_dom.insert(rel, achor.parentElement, runtime_dom.next(achor));
             }
 
@@ -1387,9 +1459,6 @@ function render_render(vnode, container) {
     }
 }
 
-function onCreated(vnode, rel) {
-    vnode.onCreated(rel);
-}
 
 function getRealVnode(vnode) {
     while (!vnode.element) {
@@ -1414,7 +1483,18 @@ function patch(v1, v2, container) {
         destroryVnode(v1);
     }
     else if (v1 && v2 && sameNode(v1, v2)) {
-        patchVnode(v1, v2);
+        if (v2.isShow) {
+            callHooks(v2, "onCreated", v1.element);
+            patchVnode(v1, v2);
+        }
+        else if (v2.isHidden) {
+            callHooks(v1, "onDestrory", v1.element, () => {
+                patchVnode(v1, v2);
+            })
+        }
+        else {
+            patchVnode(v1, v2);
+        }
     }
     //实例第一次生成
     else if (!v1 && v2 && container instanceof Element) {
@@ -1424,11 +1504,35 @@ function patch(v1, v2, container) {
     else if (!v1 && v2 && !container) {
         render_render(v2, null);
     }
+    //transiton 过渡，先删除旧的再生成新的
+    else if (v1 && v2) {
+        translate(v1, v2);
+    }
     else {
         console.warn("[Sact-warn]:not aivailable Vnode", v1, v2);
         throw new Error(`[Sact-error]:arguments error，please check！`)
     }
 }
+
+
+//过渡，判断是先出还是先入
+function translate(v1, v2) {
+    if (v1.componentOptions) {
+        v1.componentOptions.Ctor.destory();
+    }
+
+    if (v1.onDestrory) {
+        callHooks(v1, "onDestrory", v1.element,
+            () => {
+                render_render(v2, v1.element);
+            });
+        console
+    }
+    else {
+        render_render(v2, v1.element);
+    }
+}
+
 
 function patchVnode(v1, v2) {
     v2.element = v1.element;
@@ -1440,14 +1544,36 @@ function patchVnode(v1, v2) {
     else if (v1.componentOptions && v2.componentOptions) {
         patchCompent(v1, v2);
     }
-    else if (v2.type === 1) {
-        return;
-    }
+    //静态节点
+    // else if (v2.type === 1) {
+    //     return;
+    // }
     else {
         patchAttrs(v1, v2);
         prePatchChildren(v1.children, v2.children, v1.element);
     }
-    
+    patchRefs(v1, v2);
+
+}
+
+
+function getRef(vnode) {
+    return vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element;
+}
+
+function patchRefs(v1, v2) {
+    const ref1 = getVnodeAttr(v1, "ref");
+    const ref2 = getVnodeAttr(v2, "ref");
+    const el2 = getRef(v2);
+    if (ref1 && ref2) {
+        if (ref1 !== ref2) {
+            destroryRefs(v1);
+            addRefs(v2);
+        }
+        else {
+            destroryRefs(v1, el2);
+        }
+    }
 }
 
 
@@ -1541,7 +1667,7 @@ function patchAttrs(v1, v2) {
 
 //diff算法核心 比较子数组
 function patchChildren(parentEle, c1, c2) {
-    vnodesTigger(c1,"onBeforeMove");
+    vnodesTigger(c1, "onBeforeMove");
     let oldStartIdx = 0;
     let newStartIdx = 0;
     let oldEndIdx = c1.length - 1;
@@ -1609,7 +1735,7 @@ function patchChildren(parentEle, c1, c2) {
             destroryVnode(oc)
         }
     }
-    vnodesTigger(c1,"onMove");
+    vnodesTigger(c1, "onMove");
 }
 
 
@@ -1676,17 +1802,19 @@ function renElement(vnode) {
         vnode.element = document.createTextNode(vnode.text);
         return vnode.element;
     }
+
     //组件
     if (vnode.componentOptions) {
         vnode.element = renComponent(vnode, vnode.componentOptions)
-        if (vnode.onCreated) {
-            onCreated(vnode, vnode.element)
-        }
+        callHooks(vnode, "onCreated", vnode.element)
+        addRefs(vnode);
         return vnode.element;
     }
+
     //正常元素
-    let { tag, data, children, key } = vnode;
-    let rel = (vnode.element = document.createElement(tag));
+    const { tag, data, children, key } = vnode;
+    const rel = (vnode.element = document.createElement(tag));
+
     if (data) {
         setAttrs(rel, data, vnode["context"]);
     }
@@ -1696,15 +1824,37 @@ function renElement(vnode) {
     if (key) {
         runtime_dom.setAttribute(rel, "key", key);
     }
+
     vnode.element = rel;
-    if (vnode.onCreated) {
-        onCreated(vnode, rel)
-    }
+    addRefs(vnode);
+
+    callHooks(vnode, "onCreated", rel);
     return rel;
 }
+
+//添加ref
+function addRefs(vnode) {
+    const ref = getVnodeAttr(vnode, "ref");
+    if (ref) {
+        const el = vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element;
+        const { context } = vnode;
+
+        let oldRef = context.$refs[ref];
+        if (oldRef && isArray(oldRef)) {
+            oldRef.push(el);
+        }
+        else if (oldRef) {
+            context.$refs[ref] = [oldRef, el];
+        }
+        else {
+            context.$refs[ref] = el;
+        }
+    }
+}
+
 function renComponent(vnode, option) {
     let { Ctor, children } = option;
-    let { key, data } = vnode;
+    const { key, data } = vnode;
 
     //渲染的时候再实例化Ctor;
     //这样可以减少很大一部分的内存占用
@@ -1773,38 +1923,39 @@ function toCamelCase(name) {
 //传入父组件的参数
 function parsePropsData(Ctor, data) {
 
-    //装载并检查props
+    //装载props
     let props = {};
     let propsCheck = Ctor.$propsCheck;
     let res = {};
     for (let i of Reflect.ownKeys(data)) {
-        for (let i of Reflect.ownKeys(data)) {
-            let attrs = data[i];
-            if (isObj(attrs)) {
-                for (let key of Reflect.ownKeys(attrs)) {
-                    let attr = attrs[key];
-                    key = toCamelCase(key)
-                    props[key] = attr;
-
-                    //style 与 class除外
-                    if (key === "style" || key === "class") {
-                        res[key] = attr;
-                    }
-                }
+        let attrs = data[i];
+        //style 与 class除外
+        if (i === "style" || i === "class") {
+            res[i] = attrs;
+        }
+        else if (isObj(attrs)) {
+            for (let key of Reflect.ownKeys(attrs)) {
+                let attr = attrs[key];
+                key = toCamelCase(key);
+                props[key] = attr;
             }
         }
     }
+
+    //检查props
     if (propsCheck) {
         for (let prop of Reflect.ownKeys(propsCheck)) {
             let checker = propsCheck[prop];
             res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
+
     else if (Reflect.ownKeys(props).length > 0) {
-        console.warn(`[Sact-warn]:this component '${Ctor.name}' had not define props,
+        sactWarn(`this component '${Ctor.name}' not defined props,
                     but this component was feeded in some props '${Reflect.ownKeys(props)}',this props will be not available,
                     beacuse those maybe will cause some wrong. we do not recommond`)
     }
+
     Ctor.props = res;
     return res;
 }
@@ -1875,17 +2026,43 @@ function checkProps(checker, attr, key, cname) {
 
 
 function destroryVnode(vnode) {
-    if (vnode.onDestrory) {
-        vnode.onDestrory(vnode.element, () => runtime_dom.remove(vnode.element));
-    }
     if (vnode.componentOptions) {
         vnode.componentOptions.Ctor.destory();
-        runtime_dom.remove(vnode.element)
+    }
+    if (vnode.onDestrory) {
+        callHooks(vnode, "onDestrory", vnode.element, () => runtime_dom.remove(vnode.element));
     }
     else {
-        runtime_dom.remove(vnode.element)
+        runtime_dom.remove(vnode.element);
+    }
+    destroryRefs(vnode);
+}
+
+
+function destroryRefs(vnode, replace) {
+    const ref = getVnodeAttr(vnode, "ref");
+    if (ref) {
+        const el = vnode.componentOptions ? vnode.componentOptions.Ctor : vnode.element;
+        const { context } = vnode;
+
+        let oldRef = context.$refs[ref];
+        if (oldRef && isArray(oldRef)) {
+            const index = oldRef.indexOf(el);
+            if (index > -1) {
+                replace ? oldRef.splice(index, 1, replace) : oldRef.splice(index, 1);
+            }
+        }
+        else if (oldRef) {
+            replace ? context.$refs[ref] = replace : Reflect.deleteProperty(context.$refs, ref);
+        }
     }
 }
+
+
+function render_isComponent(vnode) {
+    return vnode.componentOptions;
+}
+
 
 function renChildren(rel, children) {
     if (Array.isArray(children)) {
@@ -1975,18 +2152,18 @@ function setDomAttrs(rel, attrs) {
     }
 }
 
- 
-function vnodesTigger(vnodes,name){
+
+function vnodesTigger(vnodes, name) {
     vnodes.forEach(v => {
-        callHooks(v,name,v.element)
+        callHooks(v, name, v.element)
     });
-} 
+}
 
 
 //触发vnode的生命周期函数
-function callHooks(vnode,name,args) {
-    if(vnode[name]){
-        vnode[name](args)
+function callHooks(vnode, name, ...args) {
+    if (vnode[name]) {
+        vnode[name](...args)
     }
 }
 
@@ -2027,6 +2204,226 @@ class computed_computedNode{
         trigger(this.sact.$data,setType.SET,this.name);
     }
 }
+// CONCATENATED MODULE: ./src/component/transition.js
+
+
+
+const prefix = "s";
+
+const animationName = {
+    ENTER: "-enter",
+    LEAVE: "-leave",
+    ACTIVE: "-active",
+    TO: "-to",
+}
+
+
+
+//防止嵌套其他抽象组件
+function getRealChild(vnode) {
+    var compOptions = vnode && vnode.componentOptions;
+    if (compOptions && compOptions.Ctor.isAbstract) {
+        return getRealChild(getFirstComponentChild(compOptions.children))
+    } else {
+        return vnode
+    }
+}
+
+
+function getFirstComponentChild(vnodes) {
+    if (isArray(vnodes) && vnodes.length === 1) {
+        return vnodes[0];
+    }
+    else if(isArray(vnodes) && vnodes.length > 1){
+        console.log(vnodes);
+        throw new Error("transiton just recive a child, more children please use transition-group")
+    }
+    else {
+        return undefined;
+    }
+}
+
+function getPos(ele) {
+    return ele.getBoundingClientRect();
+}
+
+//初始化transtion参数
+function initdata(props) {
+    const res = {};
+    let { name } = props;
+    if (!isString(name)) {
+        name = prefix;
+    }
+
+    res.enter = name + animationName.ENTER;
+    res.enterActive = name + animationName.ENTER + animationName.ACTIVE;
+    res.enterTo = name + animationName.ENTER + animationName.TO;
+    res.leave = name + animationName.LEAVE;
+    res.leaveActive = name + animationName.LEAVE + animationName.ACTIVE;
+    res.leaveTo = name + animationName.LEAVE + animationName.TO;
+
+    exceptExtend(res,props);
+    return res;
+}
+
+function removeClass(ele,...cls) {
+    if(cls && ele){
+        ele.classList.remove(...cls);
+    }
+}
+
+function addClass(ele,...cls) {
+    if(cls && ele){
+        ele.classList.add(...cls);
+    }
+}
+
+function clearClass(ele,opts) {
+    for(let i of ["enter",
+    "enterActive",
+    "enterTo",
+    "leave",
+    "leaveTo",
+    "leaveActive"]){
+        if(ele.classList.contains(opts[i])){
+            removeClass(ele,opts[i]);
+        }
+    }
+}
+
+
+//创建时插入的类名
+function whenCreate(ele) {
+
+    const self = this;
+    const {opts} = this._data;
+
+    
+    function _created() {
+        removeClass(ele,opts.enterTo,opts.enterActive);
+        ele.removeEventListener("transitionend", _created);
+        ele.removeEventListener("animationend",_created);
+    }
+
+
+    //先添加enter类
+    addClass(ele,opts.enter);
+    ele.addEventListener("transitionend", self.enterCB = _created);
+    ele.addEventListener("animationend",_created);
+    //创建完元素后添加enterActive和enterTo
+    setTimeout(()=>{
+        clearClass(ele,opts);
+        addClass(ele,opts.enterActive,opts.enterTo);
+    },0)
+}
+
+//移除时插入的类名
+function whenLeave(ele,done) {
+    const self = this;
+    const {opts} = this._data;
+    const s = ele.style;
+
+    //为none的元素不会触发动画结束事件，所以直接结束动画
+    if(s.display === "none"){
+        done && done();
+        return;
+    }
+
+    function _leaved() {
+        removeClass(ele,opts.leaveTo,opts.leaveActive);
+        done && done();
+        self._isLeaving = false;
+        ele.removeEventListener("transitionend", _leaved);
+        ele.removeEventListener("animationend",_leaved);
+    }
+
+    //先添加leave类
+    addClass(ele,opts.leave);
+
+    ele.addEventListener("transitionend", self.leaveCb = _leaved);
+    ele.addEventListener("animationend",_leaved);
+
+    //添加标记防止重复
+    this._isLeaving = true;
+    //然后异步添加leaveActive和leaveTo
+    setTimeout(()=>{
+        clearClass(ele,opts);
+        addClass(ele,opts.leaveActive,opts.leaveTo);
+    },0)
+}
+
+
+function dealShow(data,child) {
+    if(child.data && child.data.style){
+        const nowShow = child.data.style.display === "none" ? false : true;
+        child.isShow = !!(!data.lastShow && nowShow);
+        child.isHidden = !!(data.lastShow && !nowShow);
+        data.lastShow = nowShow;
+    }
+}
+
+const transitionProps =  {
+    "mode": { //模式，默认为先出后进
+        default: "out-in",
+        validator(value) {
+            return value === "in-out" || value === "out-in";
+        }
+    },
+    "name": "string",//自动会在前面加上s-的前缀找到class
+    "enter": "string",//元素添加前的类
+    "enterActive": "string",//整个元素创建期间的类名
+    "enterTo": "string",//元素被插入后的类名
+    "leave": "string", //元素被删除前的类名
+    "leaveActive": "string",//元素删除期间的类名
+    "enterTo": "string",//元素被删除（leave移除后）后的类名
+    "duration": { //动画的持续时间
+        type: "string",
+        default: "500"
+    },
+}
+
+
+
+/* harmony default export */ var transition = ({
+    name: 'transition',
+    isAbstract: true,
+    isShowAttr: false,
+    props:transitionProps,
+    beforeMount() {
+        this._data = {};
+        this._data.opts = initdata(this.props);
+    },
+    mounted(){
+        this.wrapVnode.onDestrory = whenLeave.bind(this);
+    },
+    updated(){
+        this.wrapVnode.onDestrory = whenLeave.bind(this);
+    },
+    render(h) {
+
+        if(this._isLeaving){
+            if(this.leaveCb){
+                this.leaveCb.call(this);
+            }
+        }
+
+        let child = getRealChild(getFirstComponentChild(this.$slot["default"]))
+
+        if (!child) {
+            return;
+        }
+
+        dealShow(this._data,child)
+
+        child.onCreated = whenCreate.bind(this);
+        child.onDestrory = whenLeave.bind(this);
+        child._data = this._data;
+        child.achor = this.wrapVnode.achor;
+        child.parent = this.wrapVnode.parent;
+        this.oldChild = child;
+        return child;
+    }
+});
 // CONCATENATED MODULE: ./src/core/init.js
 
 
@@ -2037,7 +2434,9 @@ class computed_computedNode{
 
 
 
+
 let cid = 0;
+
 function initAll(options) {
     this.$options = options;
     initWhen(this);
@@ -2049,6 +2448,8 @@ function initAll(options) {
     initData(this);
     initComponent(this);
     this.callHooks("created");
+
+    //仓库模式无需初始化
     if (this._isStore) {
         initStore(this);
     }
@@ -2093,6 +2494,11 @@ function initElement(sact) {
 
     }
     sact.$template = template;
+
+    //用于存储真实元素
+    //如果是节点则存储sact实例
+    //如果有多个同名变量则返回一个列表
+    sact.$refs = {};
 }
 
 //判断绑定的元素是否是仓库模式
@@ -2109,6 +2515,7 @@ function getRealDom(el) {
     }
     throw new Error(`[Sact-warn]:${el} 在页面内找不到真实元素！`)
 }
+
 //将内置的列表全部合并到一个列表内
 function traverse(value, seen = new Set()) {
     if (isArray(value) || value instanceof NodeList) {
@@ -2128,10 +2535,23 @@ function traverse(value, seen = new Set()) {
 }
 
 
+//初始化watcher
+function initWatch(sact) {
+    let { watch } = sact.$options;
+    sact.$watch = {};
+    if (isObj(watch)) {
+    }
+}
+
+
+
+
+
+//初始化computed属性
 function initComputed(sact) {
     let { computed } = sact.$options;
     sact.$computed = {};
-    
+
     if (isObj(computed)) {
         for (const key in computed) {
             let fn = computed[key];
@@ -2173,13 +2593,13 @@ function initData(sact) {
 //初始化方法
 function initMethod(sact) {
     const options = sact.$options;
-    if (isObj(options.method)) {
-        let { method } = options;
-        for (let funName of Reflect.ownKeys(method)) {
-            if (!typeof method[funName] === "function") {
+    let m = options.method || options.methods;
+    if (isObj(m)) {
+        for (let funName of Reflect.ownKeys(m)) {
+            if (!typeof m[funName] === "function") {
                 throw new Error(`${funName} 不为function，请检查！`)
             }
-            sact[funName] = options.method[funName].bind(sact);
+            sact[funName] = m[funName].bind(sact);
         };
     }
     sact.effects = [];
@@ -2199,13 +2619,20 @@ function initComponent(sact) {
         sact.isShowAttr = options.isShowAttr === undefined ? true : false; //默认显示属性在组件上
         sact._shouldMount = false;
     }
-    sact.components = {};
+    //内置keep-alive 与 transition;
+    sact.components = { transition: sact_Sact.component(transition) };
     if (isObj(component)) { //使用组件时,将组件添加到环境中
         for (let con of Reflect.ownKeys(component)) {
-            sact.components[component[con].sname] = component[con];
+            if (isObj(component[con])) {
+                sact.components[component[con].sname] = sact_Sact.component(component[con]);
+            }
+            else if (component[con].isComponent) {
+                sact.components[component[con].sname] = component[con];
+            }
         }
     }
 }
+
 
 //初始化渲染功能
 function initRender(sact) {
@@ -2359,11 +2786,11 @@ function initWhen(sact) {
 function initPatch(sact) {
 
     let job = function () {
-        if (!this._mounted) {
-            this.callHooks("beforeMount")
+        if (this._mounted) {
+            this.callHooks("beforeUpdate");
         }
         else {
-            this.callHooks("beforeUpdate");
+            this.callHooks("beforeMount")
         }
 
         let oldVnode = this.$vnode;
@@ -2433,6 +2860,7 @@ sact_Sact.component = function (options) {
   }
   let Ctor = function () { return new sact_Sact({ ...options, isComponent: true }) }
   Ctor.sname = options.name;
+  Ctor.isComponent = true;
   return Ctor;
 }
 
