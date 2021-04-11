@@ -158,7 +158,7 @@
         <transition>
             <div s-if="show" class="SearchBar titleBarGobal mdui-appbar mdui-shadow-0 mdui-text-color-white-text theme">
                 <form class="mdui-toolbar mdui-appbar-fixed">
-                    <div class="outOfSearch mdui-valign" style="width: 75%;">
+                    <div ref="input" class="outOfSearch mdui-valign" style="width: 50%;">
                         <label>
                             <i class="mdui-icon material-icons seaicon"></i>
                         </label>
@@ -187,6 +187,22 @@
                 this.props.close && this.props.close();
             }
         }
+    })
+    let input = Sact.component({
+        name:"search-input",
+        template:`
+        <div class="SearchBar titleBarGobal mdui-appbar mdui-shadow-0 mdui-text-color-white-text theme">
+            <form class="mdui-toolbar mdui-appbar-fixed">
+                <div class="outOfSearch mdui-valign">
+                    <label>
+                        <i class="mdui-icon material-icons seaicon"></i>
+                    </label>
+                    <input class="seainput" @input="props.getInput" type="text" placeholder="搜索点什么...">
+                </div>
+            </form>
+        </div>
+        `,
+        props:["getInput"]
     })
     let pp = Sact.component({
         name: "search-res",
@@ -226,6 +242,11 @@
             close() {
                 this.data.show = !this.data.show;
             }
+        },
+        mounted(){
+            setTimeout(()=>{
+                this.$refs.input.style.width = "75%";
+            },0)
         },
         computed: {
             count() {

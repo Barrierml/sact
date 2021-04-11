@@ -100,11 +100,11 @@
     opacity: 0;
 }
 .zoom-enter-active {
-    transition: all .5s ease;
+    transition: all .3s ease;
 }
 
 .zoom-leave-active {
-    transition: all .5s ease;
+    transition: all .3s ease;
 }
 
 .zoom-enter,

@@ -155,8 +155,6 @@ function genData(ast) {
     if (hasShow) {
         ast.type = vnodeType.dynamic;
         style += `{display:${hasShow} ? '' : 'none'},`;
-        props += `"sShow": true,`;
-        hasProps = true;
         hasStyle = true;
     }
 

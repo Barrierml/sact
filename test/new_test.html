@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    body{
+        background-color: #333;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    div{
+        background-color: #fff;
+    }
+    p{
+        width: 200px;
+        height: 200px;
+        line-height: 200px;
+        text-align: center;
+    }
+    .s-enter-active,
+    .s-leave-active {
+        transition: all 0.3s ease;
+    }
+    .s-enter,
+    .s-leave-to {
+        transform: scale(0);
+    }
+</style>
+<body>
+    <div id="root">
+        <button @click="show = !show">显示</button>
+        <li-p s-show="show"></li-p>
+    </div>
+</body>
+
+<script type="module">
+    import Sact from "../src/sact.js"
+    let c = Sact.component({
+        name:"li-p",
+        template:`
+            <transition>
+                <p>123</p>
+            </transition>
+        `,
+    })
+new Sact({
+    el:"#root",
+    component:{c},
+    data:{
+        show:false,
+    }
+})
+</script>
+</html>

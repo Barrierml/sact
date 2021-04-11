@@ -11,7 +11,7 @@ export class Vnode {
     constructor(vm, a, b, c, d, istext, zid, type) {
         this.context = vm
         this.tag = istext ? "_text_" : a
-        this.data = b
+        this.data = b || new Object();
         if (b && b.style) {
             b.style = renStyle(b.style);
         }

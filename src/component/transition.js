@@ -1,5 +1,5 @@
 import Sact from "../sact.js"
-import { exceptExtend, isArray, isString, sactWarn } from "../tools/untils.js";
+import { exceptExtend, extend, isArray, isString, sactWarn } from "../tools/untils.js";
 
 const prefix = "s";
 
@@ -14,7 +14,7 @@ const animationName = {
 
 //防止嵌套其他抽象组件
 function getRealChild(vnode) {
-    var compOptions = vnode && vnode.componentOptions;
+    const compOptions = vnode && vnode.componentOptions;
     if (compOptions && compOptions.Ctor.isAbstract) {
         return getRealChild(getFirstComponentChild(compOptions.children))
     } else {
@@ -22,12 +22,22 @@ function getRealChild(vnode) {
     }
 }
 
+//获取包裹组件下的真实vnode
+function getRawChild(vnode) {
+    const Ctor = vnode && vnode.componentOptions && vnode.compOptions.Ctor;
+    if (Ctor) {
+        return getRawChild(Ctor.$vnode);
+    }
+    else {
+        return vnode;
+    }
+}
 
 function getFirstComponentChild(vnodes) {
     if (isArray(vnodes) && vnodes.length === 1) {
         return vnodes[0];
     }
-    else if(isArray(vnodes) && vnodes.length > 1){
+    else if (isArray(vnodes) && vnodes.length > 1) {
         console.log(vnodes);
         throw new Error("transiton just recive a child, more children please use transition-group")
     }
@@ -55,31 +65,31 @@ function initdata(props) {
     res.leaveActive = name + animationName.LEAVE + animationName.ACTIVE;
     res.leaveTo = name + animationName.LEAVE + animationName.TO;
 
-    exceptExtend(res,props);
+    exceptExtend(res, props);
     return res;
 }
 
-function removeClass(ele,...cls) {
-    if(cls && ele){
+function removeClass(ele, ...cls) {
+    if (cls && ele) {
         ele.classList.remove(...cls);
     }
 }
 
-function addClass(ele,...cls) {
-    if(cls && ele){
+function addClass(ele, ...cls) {
+    if (cls && ele) {
         ele.classList.add(...cls);
     }
 }
 
-function clearClass(ele,opts) {
-    for(let i of ["enter",
-    "enterActive",
-    "enterTo",
-    "leave",
-    "leaveTo",
-    "leaveActive"]){
-        if(ele.classList.contains(opts[i])){
-            removeClass(ele,opts[i]);
+function clearClass(ele, opts) {
+    for (let i of ["enter",
+        "enterActive",
+        "enterTo",
+        "leave",
+        "leaveTo",
+        "leaveActive"]) {
+        if (ele.classList.contains(opts[i])) {
+            removeClass(ele, opts[i]);
         }
     }
 }
@@ -89,73 +99,81 @@ function clearClass(ele,opts) {
 function whenCreate(ele) {
 
     const self = this;
-    const {opts} = this._data;
+    const { opts } = this._data;
 
-    
+
     function _created() {
-        removeClass(ele,opts.enterTo,opts.enterActive);
+        removeClass(ele, opts.enterTo, opts.enterActive);
         ele.removeEventListener("transitionend", _created);
-        ele.removeEventListener("animationend",_created);
+        ele.removeEventListener("animationend", _created);
     }
 
 
     //先添加enter类
-    addClass(ele,opts.enter);
+    addClass(ele, opts.enter);
     ele.addEventListener("transitionend", self.enterCB = _created);
-    ele.addEventListener("animationend",_created);
+    ele.addEventListener("animationend", _created);
     //创建完元素后添加enterActive和enterTo
-    setTimeout(()=>{
-        clearClass(ele,opts);
-        addClass(ele,opts.enterActive,opts.enterTo);
-    },0)
+    setTimeout(() => {
+        clearClass(ele, opts);
+        addClass(ele, opts.enterActive, opts.enterTo);
+    }, 0)
 }
 
 //移除时插入的类名
-function whenLeave(ele,done) {
+function whenLeave(ele, done) {
     const self = this;
-    const {opts} = this._data;
+    const { opts } = this._data;
     const s = ele.style;
 
     //为none的元素不会触发动画结束事件，所以直接结束动画
-    if(s.display === "none"){
+    if (s.display === "none") {
         done && done();
         return;
     }
 
     function _leaved() {
-        removeClass(ele,opts.leaveTo,opts.leaveActive);
+        removeClass(ele, opts.leaveTo, opts.leaveActive);
         done && done();
         self._isLeaving = false;
         ele.removeEventListener("transitionend", _leaved);
-        ele.removeEventListener("animationend",_leaved);
+        ele.removeEventListener("animationend", _leaved);
     }
 
     //先添加leave类
-    addClass(ele,opts.leave);
+    addClass(ele, opts.leave);
 
     ele.addEventListener("transitionend", self.leaveCb = _leaved);
-    ele.addEventListener("animationend",_leaved);
+    ele.addEventListener("animationend", _leaved);
 
     //添加标记防止重复
     this._isLeaving = true;
     //然后异步添加leaveActive和leaveTo
-    setTimeout(()=>{
-        clearClass(ele,opts);
-        addClass(ele,opts.leaveActive,opts.leaveTo);
-    },0)
+    setTimeout(() => {
+        clearClass(ele, opts);
+        addClass(ele, opts.leaveActive, opts.leaveTo);
+    }, 0)
 }
 
 
-function dealShow(data,child) {
-    if(child.data && child.data.style){
-        const nowShow = child.data.style.display === "none" ? false : true;
+function dealShow(data, child) {
+    const props = child.context.props;
+    let cd = child.data;
+
+    //s-show 外层组件时的判断
+    if (props.style) {
+        extend(cd.style = cd.style || {}, props.style)
+        Reflect.deleteProperty(props, "style");
+    }
+    if (cd.style) {
+        const nowShow = cd.style.display === "none" ? false : true;
         child.isShow = !!(!data.lastShow && nowShow);
         child.isHidden = !!(data.lastShow && !nowShow);
         data.lastShow = nowShow;
     }
 }
 
-export const transitionProps =  {
+export const transitionProps = {
     "mode": { //模式，默认为先出后进
         default: "out-in",
         validator(value) {
@@ -173,6 +191,10 @@ export const transitionProps =  {
         type: "string",
         default: "500"
     },
+    "delay": { //延迟后使用
+        type: "string",
+        default: "0",
+    },
 }
 
 
@@ -181,21 +203,21 @@ export default {
     name: 'transition',
     isAbstract: true,
     isShowAttr: false,
-    props:transitionProps,
+    props: transitionProps,
     beforeMount() {
         this._data = {};
         this._data.opts = initdata(this.props);
     },
-    mounted(){
+    mounted() {
         this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
-    updated(){
+    updated() {
         this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
     render(h) {
 
-        if(this._isLeaving){
-            if(this.leaveCb){
+        if (this._isLeaving) {
+            if (this.leaveCb) {
                 this.leaveCb.call(this);
             }
         }
@@ -205,8 +227,7 @@ export default {
         if (!child) {
             return;
         }
-
-        dealShow(this._data,child)
+        dealShow(this._data, child)
 
         child.onCreated = whenCreate.bind(this);
         child.onDestrory = whenLeave.bind(this);
