@@ -7,6 +7,8 @@ import Sact from "../sact.js";
 import { patch } from "./render.js";
 import { computedNode } from "./computed.js";
 import transition from "../component/transition.js";
+import route from "../component/router.js"
+
 
 let cid = 0;
 
@@ -21,7 +23,7 @@ export default function initAll(options) {
     initComputed(this);
     initData(this);
     initComponent(this);
-    this.callHooks("created");
+
 
     //仓库模式无需初始化
     if (this._isStore) {
@@ -31,11 +33,12 @@ export default function initAll(options) {
         initRender(this);
         initPatch(this);
     }
+    this.callHooks("created");
 }
 
 
-function initParma(sact){
-    const { isShowAttr,propsTransfrom } = sact.$options;
+function initParma(sact) {
+    const { isShowAttr, propsTransfrom } = sact.$options;
     sact.isShowAttr = isShowAttr === undefined ? true : false; //默认显示属性在组件上
     sact.propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
 }
@@ -198,15 +201,15 @@ function initComponent(sact) {
         sact.name = options.name;
         sact._shouldMount = false;
     }
-    //内置keep-alive 与 transition;
-    sact.components = { transition: Sact.component(transition) };
+    //内置keep-alive、 transition 、route ;
+    sact.components = { transition: Sact.component(transition), route: Sact.component(route) };
     if (isObj(component)) { //使用组件时,将组件添加到环境中
         for (let con of Reflect.ownKeys(component)) {
-            if (isObj(component[con])) {
-                sact.components[component[con].sname] = Sact.component(component[con]);
-            }
-            else if (component[con].isComponent) {
+            if (component[con].isComponent) {
                 sact.components[component[con].sname] = component[con];
+            }
+            else if (isObj(component[con])) {
+                sact.components[component[con].sname] = Sact.component(component[con]);
             }
         }
     }
@@ -315,7 +318,7 @@ function createProps(obj) {
     if (isArray(obj)) {
         res.type = obj;
     }
-    else if(isObj(obj)){
+    else if (isObj(obj)) {
         res = obj;
     }
     else {

@@ -9,7 +9,7 @@ function render(vnode, container) {
         dom.replace(container, rel);
         vnode.context.$ele = rel;
     }
-    else if (vnode.context.isComponent) { //组件初始化
+    else if (vnode.context.isComponent && !(vnode.warpSact && vnode.warpSact.isAbstract)) { //组件初始化
         renElement(vnode);
     }
     else if (vnode.warpSact) { //抽象组件安装
@@ -86,7 +86,6 @@ export function patch(v1, v2, container) {
     }
     else {
         console.warn("[Sact-warn]:not aivailable Vnode", v1, v2);
-        throw new Error(`[Sact-error]:arguments error，please check！`)
     }
 }
 

@@ -2481,7 +2481,7 @@ const transitionProps = {
         child.parent = this.wrapVnode.parent;
 
         //处理外包裹
-        const warpComponent = getCtor(this.wrapVnode.parent) || this.wrapVnode.context;
+        const warpComponent = getCtor(this.wrapVnode.parent) || (!this.wrapVnode.parent && this.wrapVnode.context);
         if(warpComponent){
             warpComponent.wrapVnode.onDestrory = destrory;
         }

@@ -22,17 +22,6 @@ function getRealChild(vnode) {
     }
 }
 
-//获取包裹组件下的真实vnode
-function getRawChild(vnode) {
-    const Ctor = vnode && vnode.componentOptions && vnode.componentOptions.Ctor;
-    if (Ctor) {
-        return getRawChild(Ctor.$vnode);
-    }
-    else {
-        return vnode;
-    }
-}
-
 function getFirstComponentChild(vnodes) {
     if (isArray(vnodes) && vnodes.length === 1) {
         return vnodes[0];
