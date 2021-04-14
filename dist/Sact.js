@@ -217,7 +217,7 @@ function getDataInData(VName, data) {
 
 const leftAttrsTag = "{{"
 const rightAttrsTag = "}}"
-const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&_$]+)\\s*${rightAttrsTag}`)
+const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&_$\\?\\:\\s\\']+)\\s*${rightAttrsTag}`)
 //判断含有为动态变量并返getDynamicName回变量名 出现的位置 和最后的位置
 function getDynamicName(str) {
     let res = AttrsTag.exec(str)
@@ -471,9 +471,12 @@ class Vnode {
     constructor(vm, a, b, c, d, istext, zid, type) {
         this.context = vm
         this.tag = istext ? "_text_" : a
-        this.data = b
+        this.data = b || new Object();
         if (b && b.style) {
             b.style = renStyle(b.style);
+        }
+        if (b && b.class) {
+            b.class = renClass(b.class);
         }
         this.componentOptions = d
 
@@ -670,6 +673,23 @@ function renStyle(style, seen = {}) {
     }
     return seen;
 }
+
+function renClass(cls){
+    let res = "";
+    if(isObj(cls)){
+        for(let i in cls){
+            if(cls[i]){
+                res += String(i) + " ";
+            }
+        }
+    }
+    else if(isArray(cls)){
+        cls.forEach((i)=>{
+            res += i + " ";
+        })
+    }
+    return res;
+}
 // CONCATENATED MODULE: ./src/core/generate.js
 //将ast语法树转化成语法
 
@@ -828,8 +848,6 @@ function genData(ast) {
     if (hasShow) {
         ast.type = vnodeType.dynamic;
         style += `{display:${hasShow} ? '' : 'none'},`;
-        props += `"sShow": true,`;
-        hasProps = true;
         hasStyle = true;
     }
 
@@ -1393,6 +1411,14 @@ function createDeleter(target, key) {
             parent.appendChild(child);
         }
     },
+    create(tag){
+        if(tag === "svg" || tag === "path"){
+            return document.createElementNS('http://www.w3.org/2000/svg',tag);
+        }
+        else{
+            return document.createElement(tag);
+        }
+    },
     remove(child){
         const parent = child.parentNode;
         parent && parent.removeChild(child);
@@ -1813,7 +1839,7 @@ function renElement(vnode) {
 
     //正常元素
     const { tag, data, children, key } = vnode;
-    const rel = (vnode.element = document.createElement(tag));
+    const rel = (vnode.element = runtime_dom.create(tag));
 
     if (data) {
         setAttrs(rel, data, vnode["context"]);
@@ -1930,13 +1956,16 @@ function parsePropsData(Ctor, data) {
     for (let i of Reflect.ownKeys(data)) {
         let attrs = data[i];
         //style 与 class除外
-        if (i === "style" || i === "class") {
+        if (i === "style" || i === "staticClass") {
             res[i] = attrs;
         }
         else if (isObj(attrs)) {
             for (let key of Reflect.ownKeys(attrs)) {
                 let attr = attrs[key];
                 key = toCamelCase(key);
+                if(Ctor.propsTransfrom && attr === ""){
+                    attr = true;
+                }
                 props[key] = attr;
             }
         }
@@ -1981,9 +2010,9 @@ function checkProps(checker, attr, key, cname) {
     if (isFunc(validator) && validator(attr)) {
         return attr;
     }
-
     //正常类型检查
     let type_error = `\n[Sact-warn]:this component '${cname}', it's prop [${key}] should be '${String(type)}',but it was feeded in '${typeof attr}',please check this!`
+
     if (isString(type)) {
         if (type === "any") {
             return attr;
@@ -2221,7 +2250,7 @@ const animationName = {
 
 //防止嵌套其他抽象组件
 function getRealChild(vnode) {
-    var compOptions = vnode && vnode.componentOptions;
+    const compOptions = vnode && vnode.componentOptions;
     if (compOptions && compOptions.Ctor.isAbstract) {
         return getRealChild(getFirstComponentChild(compOptions.children))
     } else {
@@ -2229,12 +2258,22 @@ function getRealChild(vnode) {
     }
 }
 
+//获取包裹组件下的真实vnode
+function getRawChild(vnode) {
+    const Ctor = vnode && vnode.componentOptions && vnode.componentOptions.Ctor;
+    if (Ctor) {
+        return getRawChild(Ctor.$vnode);
+    }
+    else {
+        return vnode;
+    }
+}
 
 function getFirstComponentChild(vnodes) {
     if (isArray(vnodes) && vnodes.length === 1) {
         return vnodes[0];
     }
-    else if(isArray(vnodes) && vnodes.length > 1){
+    else if (isArray(vnodes) && vnodes.length > 1) {
         console.log(vnodes);
         throw new Error("transiton just recive a child, more children please use transition-group")
     }
@@ -2246,6 +2285,11 @@ function getFirstComponentChild(vnodes) {
 function getPos(ele) {
     return ele.getBoundingClientRect();
 }
+
+function getCtor(vnode) {
+    return vnode && vnode.componentOptions && vnode.componentOptions.Ctor
+}
+
 
 //初始化transtion参数
 function initdata(props) {
@@ -2262,31 +2306,31 @@ function initdata(props) {
     res.leaveActive = name + animationName.LEAVE + animationName.ACTIVE;
     res.leaveTo = name + animationName.LEAVE + animationName.TO;
 
-    exceptExtend(res,props);
+    exceptExtend(res, props);
     return res;
 }
 
-function removeClass(ele,...cls) {
-    if(cls && ele){
+function removeClass(ele, ...cls) {
+    if (cls && ele) {
         ele.classList.remove(...cls);
     }
 }
 
-function addClass(ele,...cls) {
-    if(cls && ele){
+function addClass(ele, ...cls) {
+    if (cls && ele) {
         ele.classList.add(...cls);
     }
 }
 
-function clearClass(ele,opts) {
-    for(let i of ["enter",
-    "enterActive",
-    "enterTo",
-    "leave",
-    "leaveTo",
-    "leaveActive"]){
-        if(ele.classList.contains(opts[i])){
-            removeClass(ele,opts[i]);
+function clearClass(ele, opts) {
+    for (let i of ["enter",
+        "enterActive",
+        "enterTo",
+        "leave",
+        "leaveTo",
+        "leaveActive"]) {
+        if (ele.classList.contains(opts[i])) {
+            removeClass(ele, opts[i]);
         }
     }
 }
@@ -2296,73 +2340,81 @@ function clearClass(ele,opts) {
 function whenCreate(ele) {
 
     const self = this;
-    const {opts} = this._data;
+    const { opts } = this._data;
 
-    
+
     function _created() {
-        removeClass(ele,opts.enterTo,opts.enterActive);
+        removeClass(ele, opts.enterTo, opts.enterActive);
         ele.removeEventListener("transitionend", _created);
-        ele.removeEventListener("animationend",_created);
+        ele.removeEventListener("animationend", _created);
     }
 
 
     //先添加enter类
-    addClass(ele,opts.enter);
+    addClass(ele, opts.enter);
     ele.addEventListener("transitionend", self.enterCB = _created);
-    ele.addEventListener("animationend",_created);
+    ele.addEventListener("animationend", _created);
     //创建完元素后添加enterActive和enterTo
-    setTimeout(()=>{
-        clearClass(ele,opts);
-        addClass(ele,opts.enterActive,opts.enterTo);
-    },0)
+    setTimeout(() => {
+        clearClass(ele, opts);
+        addClass(ele, opts.enterActive, opts.enterTo);
+    }, 0)
 }
 
 //移除时插入的类名
-function whenLeave(ele,done) {
+function whenLeave(ele, done) {
     const self = this;
-    const {opts} = this._data;
+    const { opts } = this._data;
     const s = ele.style;
 
     //为none的元素不会触发动画结束事件，所以直接结束动画
-    if(s.display === "none"){
+    if (s.display === "none") {
         done && done();
         return;
     }
 
     function _leaved() {
-        removeClass(ele,opts.leaveTo,opts.leaveActive);
+        removeClass(ele, opts.leaveTo, opts.leaveActive);
         done && done();
         self._isLeaving = false;
         ele.removeEventListener("transitionend", _leaved);
-        ele.removeEventListener("animationend",_leaved);
+        ele.removeEventListener("animationend", _leaved);
     }
 
     //先添加leave类
-    addClass(ele,opts.leave);
+    addClass(ele, opts.leave);
 
     ele.addEventListener("transitionend", self.leaveCb = _leaved);
-    ele.addEventListener("animationend",_leaved);
+    ele.addEventListener("animationend", _leaved);
 
     //添加标记防止重复
     this._isLeaving = true;
     //然后异步添加leaveActive和leaveTo
-    setTimeout(()=>{
-        clearClass(ele,opts);
-        addClass(ele,opts.leaveActive,opts.leaveTo);
-    },0)
+    setTimeout(() => {
+        clearClass(ele, opts);
+        addClass(ele, opts.leaveActive, opts.leaveTo);
+    }, 0)
 }
 
 
-function dealShow(data,child) {
-    if(child.data && child.data.style){
-        const nowShow = child.data.style.display === "none" ? false : true;
+function dealShow(data, child) {
+    const props = child.context.props;
+    let cd = child.data;
+
+    //s-show 外层组件时的判断
+    if (props && props.style) {
+        extend(cd.style = cd.style || {}, props.style)
+        Reflect.deleteProperty(props, "style");
+    }
+    if (cd.style) {
+        const nowShow = cd.style.display === "none" ? false : true;
         child.isShow = !!(!data.lastShow && nowShow);
         child.isHidden = !!(data.lastShow && !nowShow);
         data.lastShow = nowShow;
     }
 }
 
-const transitionProps =  {
+const transitionProps = {
     "mode": { //模式，默认为先出后进
         default: "out-in",
         validator(value) {
@@ -2380,6 +2432,10 @@ const transitionProps =  {
         type: "string",
         default: "500"
     },
+    "delay": { //延迟后使用
+        type: "string",
+        default: "0",
+    },
 }
 
 
@@ -2388,38 +2444,48 @@ const transitionProps =  {
     name: 'transition',
     isAbstract: true,
     isShowAttr: false,
-    props:transitionProps,
+    props: transitionProps,
     beforeMount() {
         this._data = {};
         this._data.opts = initdata(this.props);
     },
-    mounted(){
+    mounted() {
         this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
-    updated(){
+    updated() {
         this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
     render(h) {
 
-        if(this._isLeaving){
-            if(this.leaveCb){
+        if (this._isLeaving) {
+            if (this.leaveCb) {
                 this.leaveCb.call(this);
             }
         }
-
         let child = getRealChild(getFirstComponentChild(this.$slot["default"]))
 
         if (!child) {
             return;
         }
+        const create = whenCreate.bind(this);
+        const destrory = whenLeave.bind(this);
 
-        dealShow(this._data,child)
+        //处理s-show
+        dealShow(this._data, child);
+        child.onCreated = create;
+        child.onDestrory = destrory
 
-        child.onCreated = whenCreate.bind(this);
-        child.onDestrory = whenLeave.bind(this);
+        //挂载数据
         child._data = this._data;
         child.achor = this.wrapVnode.achor;
         child.parent = this.wrapVnode.parent;
+
+        //处理外包裹
+        const warpComponent = getCtor(this.wrapVnode.parent) || this.wrapVnode.context;
+        if(warpComponent){
+            warpComponent.wrapVnode.onDestrory = destrory;
+        }
+
         this.oldChild = child;
         return child;
     }
@@ -2441,6 +2507,7 @@ function initAll(options) {
     this.$options = options;
     initWhen(this);
     this.callHooks("beforeCreate");
+    initParma(this);
     initElement(this);
     initProps(this);
     initMethod(this);
@@ -2459,6 +2526,12 @@ function initAll(options) {
     }
 }
 
+
+function initParma(sact){
+    const { isShowAttr,propsTransfrom } = sact.$options;
+    sact.isShowAttr = isShowAttr === undefined ? true : false; //默认显示属性在组件上
+    sact.propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
+}
 //初始化对象
 function initElement(sact) {
 
@@ -2616,7 +2689,6 @@ function initComponent(sact) {
         sact.isComponent = true;
         sact.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
-        sact.isShowAttr = options.isShowAttr === undefined ? true : false; //默认显示属性在组件上
         sact._shouldMount = false;
     }
     //内置keep-alive 与 transition;
@@ -2731,9 +2803,12 @@ function createProps(obj) {
         type: "any",  //类型，可以为列表
         default: undefined, //默认值
         validator: null, //验证函数，要返回true或false
-        required: false,  //默认需要
+        required: false,  //是否需要
     }
-    if (isObj(obj)) {
+    if (isArray(obj)) {
+        res.type = obj;
+    }
+    else if(isObj(obj)){
         res = obj;
     }
     else {

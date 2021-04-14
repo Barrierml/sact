@@ -14,6 +14,7 @@ export default function initAll(options) {
     this.$options = options;
     initWhen(this);
     this.callHooks("beforeCreate");
+    initParma(this);
     initElement(this);
     initProps(this);
     initMethod(this);
@@ -32,6 +33,12 @@ export default function initAll(options) {
     }
 }
 
+
+function initParma(sact){
+    const { isShowAttr,propsTransfrom } = sact.$options;
+    sact.isShowAttr = isShowAttr === undefined ? true : false; //默认显示属性在组件上
+    sact.propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
+}
 //初始化对象
 function initElement(sact) {
 
@@ -189,7 +196,6 @@ function initComponent(sact) {
         sact.isComponent = true;
         sact.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
-        sact.isShowAttr = options.isShowAttr === undefined ? true : false; //默认显示属性在组件上
         sact._shouldMount = false;
     }
     //内置keep-alive 与 transition;
@@ -304,9 +310,12 @@ function createProps(obj) {
         type: "any",  //类型，可以为列表
         default: undefined, //默认值
         validator: null, //验证函数，要返回true或false
-        required: false,  //默认需要
+        required: false,  //是否需要
     }
-    if (isObj(obj)) {
+    if (isArray(obj)) {
+        res.type = obj;
+    }
+    else if(isObj(obj)){
         res = obj;
     }
     else {

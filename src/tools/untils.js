@@ -122,7 +122,7 @@ export function getDataInData(VName, data) {
 
 const leftAttrsTag = "{{"
 const rightAttrsTag = "}}"
-export const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&_$]+)\\s*${rightAttrsTag}`)
+export const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&_$\\?\\:\\s\\']+)\\s*${rightAttrsTag}`)
 //判断含有为动态变量并返getDynamicName回变量名 出现的位置 和最后的位置
 export function getDynamicName(str) {
     let res = AttrsTag.exec(str)

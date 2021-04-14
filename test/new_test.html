@@ -34,7 +34,7 @@
 <body>
     <div id="root">
         <button @click="show = !show">显示</button>
-        <li-p s-show="show"></li-p>
+        <li-p s-if="show"></li-p>
     </div>
 </body>
 
@@ -43,16 +43,19 @@
     let c = Sact.component({
         name:"li-p",
         template:`
-            <transition>
-                <p>123</p>
-            </transition>
+        <div>
+        <transition>
+        <div>123</div>
+        </transition>
+    </div>
         `,
     })
-new Sact({
+window.ww = new Sact({
     el:"#root",
     component:{c},
     data:{
-        show:false,
+        show:true,
+        qq:5,
     }
 })
 </script>

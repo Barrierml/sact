@@ -1,4 +1,4 @@
-import { isArray, sactWarn } from "../tools/untils.js";
+import { isArray, isObj, sactWarn } from "../tools/untils.js";
 
 export const vnodeType = {
     static: 1,
@@ -14,6 +14,9 @@ export class Vnode {
         this.data = b || new Object();
         if (b && b.style) {
             b.style = renStyle(b.style);
+        }
+        if (b && b.class) {
+            b.class = renClass(b.class);
         }
         this.componentOptions = d
 
@@ -209,4 +212,21 @@ function renStyle(style, seen = {}) {
         })
     }
     return seen;
+}
+
+function renClass(cls){
+    let res = "";
+    if(isObj(cls)){
+        for(let i in cls){
+            if(cls[i]){
+                res += String(i) + " ";
+            }
+        }
+    }
+    else if(isArray(cls)){
+        cls.forEach((i)=>{
+            res += i + " ";
+        })
+    }
+    return res;
 }

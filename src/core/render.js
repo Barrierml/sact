@@ -389,7 +389,7 @@ function renElement(vnode) {
 
     //正常元素
     const { tag, data, children, key } = vnode;
-    const rel = (vnode.element = document.createElement(tag));
+    const rel = (vnode.element = dom.create(tag));
 
     if (data) {
         setAttrs(rel, data, vnode["context"]);
@@ -506,13 +506,16 @@ function parsePropsData(Ctor, data) {
     for (let i of Reflect.ownKeys(data)) {
         let attrs = data[i];
         //style 与 class除外
-        if (i === "style" || i === "class") {
+        if (i === "style" || i === "staticClass") {
             res[i] = attrs;
         }
         else if (isObj(attrs)) {
             for (let key of Reflect.ownKeys(attrs)) {
                 let attr = attrs[key];
                 key = toCamelCase(key);
+                if(Ctor.propsTransfrom && attr === ""){
+                    attr = true;
+                }
                 props[key] = attr;
             }
         }
@@ -557,9 +560,9 @@ function checkProps(checker, attr, key, cname) {
     if (isFunc(validator) && validator(attr)) {
         return attr;
     }
-
     //正常类型检查
     let type_error = `\n[Sact-warn]:this component '${cname}', it's prop [${key}] should be '${String(type)}',but it was feeded in '${typeof attr}',please check this!`
+
     if (isString(type)) {
         if (type === "any") {
             return attr;

@@ -151,7 +151,7 @@
 
 <body>
     <div id="root" class="topLand">
-        <button @click="close">11</button>
+        <button @click="close" :class="{'hah':true}">11</button>
         <transition>
             <search-bg s-show="show" @close="close"></search-bg>
         </transition>
@@ -171,7 +171,7 @@
                 </form>
             </div>
         </transition>
-        <search-res s-show="show" :count="count"></search-res>
+        <search-res haha s-show="show" :count="count"></search-res>
     </div>
 </body>
 <script type="module">
@@ -229,7 +229,12 @@
             "count": {
                 type: "number",
                 default: 2,
-            }
+            },
+            "haha":["string"],
+        },
+        propsTransfrom:true,
+        mounted(){
+            console.log(this.props)
         }
     })
     window.qq = new Sact({

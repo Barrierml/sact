@@ -24,7 +24,7 @@ function getRealChild(vnode) {
 
 //获取包裹组件下的真实vnode
 function getRawChild(vnode) {
-    const Ctor = vnode && vnode.componentOptions && vnode.compOptions.Ctor;
+    const Ctor = vnode && vnode.componentOptions && vnode.componentOptions.Ctor;
     if (Ctor) {
         return getRawChild(Ctor.$vnode);
     }
@@ -49,6 +49,11 @@ function getFirstComponentChild(vnodes) {
 function getPos(ele) {
     return ele.getBoundingClientRect();
 }
+
+function getCtor(vnode) {
+    return vnode && vnode.componentOptions && vnode.componentOptions.Ctor
+}
+
 
 //初始化transtion参数
 function initdata(props) {
@@ -161,7 +166,7 @@ function dealShow(data, child) {
     let cd = child.data;
 
     //s-show 外层组件时的判断
-    if (props.style) {
+    if (props && props.style) {
         extend(cd.style = cd.style || {}, props.style)
         Reflect.deleteProperty(props, "style");
     }
@@ -221,19 +226,30 @@ export default {
                 this.leaveCb.call(this);
             }
         }
-
         let child = getRealChild(getFirstComponentChild(this.$slot["default"]))
 
         if (!child) {
             return;
         }
-        dealShow(this._data, child)
+        const create = whenCreate.bind(this);
+        const destrory = whenLeave.bind(this);
 
-        child.onCreated = whenCreate.bind(this);
-        child.onDestrory = whenLeave.bind(this);
+        //处理s-show
+        dealShow(this._data, child);
+        child.onCreated = create;
+        child.onDestrory = destrory
+
+        //挂载数据
         child._data = this._data;
         child.achor = this.wrapVnode.achor;
         child.parent = this.wrapVnode.parent;
+
+        //处理外包裹
+        const warpComponent = getCtor(this.wrapVnode.parent) || (!this.wrapVnode.parent && this.wrapVnode.context);
+        if(warpComponent){
+            warpComponent.wrapVnode.onDestrory = destrory;
+        }
+
         this.oldChild = child;
         return child;
     }

@@ -15,6 +15,14 @@ export default {
             parent.appendChild(child);
         }
     },
+    create(tag){
+        if(tag === "svg" || tag === "path"){
+            return document.createElementNS('http://www.w3.org/2000/svg',tag);
+        }
+        else{
+            return document.createElement(tag);
+        }
+    },
     remove(child){
         const parent = child.parentNode;
         parent && parent.removeChild(child);
