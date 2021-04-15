@@ -41,7 +41,7 @@ function createEffect(fn, opts) {
     let effect = function _createEffect() {
         console.log(...arguments)
         if (!effect.active) {
-            return options.scheduler ? undefined : fn()
+            return (options && options.scheduler) ? undefined : fn()
         }
         //队列内不存在就加入队列
         if (effectStack.indexOf(effect) === -1) {

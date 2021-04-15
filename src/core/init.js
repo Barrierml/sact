@@ -24,7 +24,7 @@ export default function initAll(options) {
     initData(this);
     initComponent(this);
 
-
+    this.callHooks("created");
     //仓库模式无需初始化
     if (this._isStore) {
         initStore(this);
@@ -33,7 +33,7 @@ export default function initAll(options) {
         initRender(this);
         initPatch(this);
     }
-    this.callHooks("created");
+
 }
 
 
@@ -210,7 +210,10 @@ function initComponent(sact) {
                 sact.components[component[con].sname] = component[con];
             }
             else if (isObj(component[con])) {
-                sact.components[component[con].sname] = Sact.component(component[con]);
+                if (!component[con].name) {
+                    throw new Error("[Sact-warn]:you must set a name for component!")
+                }
+                sact.components[component[con].name] = Sact.component(component[con]);
             }
         }
     }
@@ -385,7 +388,6 @@ function initPatch(sact) {
         if (this.$vnode) {
             this.$vnode.warpSact = this;
         }
-
         patch(oldVnode, this.$vnode, this.$ele);
 
         this.$ele = this.$vnode && this.$vnode.element;
@@ -398,14 +400,14 @@ function initPatch(sact) {
         }
     }
 
-    sact.patch = effect(job.bind(sact), {
+    sact._patch = effect(job.bind(sact), {
         lazy: true
     });
 
-    recordInstanceBoundEffect(sact.patch, sact);
+    recordInstanceBoundEffect(sact._patch, sact);
 
     if (sact._shouldMount) {
-        sact.patch();
+        sact._patch();
         sact._mounted = true;
         sact._shouldMount = false;
     }

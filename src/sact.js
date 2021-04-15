@@ -14,11 +14,13 @@ export default class Sact {
       stop(v);
     });
     this.effects.length = 0;
+    this.$vnode = undefined;
+    this.destoryed = true;
   }
 
 
 }
-Sact.version = "0.1.4";
+Sact.version = "0.2.1";
 
 Sact.component = function (options) {
   if(!options.name){

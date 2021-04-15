@@ -1,4 +1,5 @@
-import { sactWarn } from "../tools/untils.js"
+import { queueJob } from "../core/scheduler.js";
+import { isArray, sactWarn } from "../tools/untils.js"
 //用来存储所有路由信息
 const Router = {
     children: {},
@@ -9,6 +10,7 @@ const stack = [];
 const getHash = (hash) => (hash && hash.slice(1)) || "/";
 let currentHash = getHash(window.location.hash);
 let oldHash = currentHash;
+let currentRouter = null;
 
 //接收参数
 const props = {
@@ -31,9 +33,10 @@ function Router_init() {
 
 
 function route() {
+
     const n = currentHash.split("/");
     const o = oldHash.split("/");
-
+    console.log("检测到变化,从", o, n)
     let nRoute = Router; //新旧指针
     let oRoute;
 
@@ -46,26 +49,27 @@ function route() {
             nRoute = nRoute && nRoute.children[n[i]];
         }
     }
-    let j = i;
+
+    currentRouter = nRoute;
     oRoute = nRoute;
 
     //通知新的开启旧的关闭
-    while (nRoute || oRoute) {
-        if (oRoute) {
-            //旧的只用通知最外层即可
-            oRoute = oRoute.children[o[j]];
-            oRoute && oRoute.routes.forEach(routerClose);
-            oRoute = undefined;
-        }
-        if (nRoute) {
-            nRoute = nRoute.children[n[i++]];
-            nRoute && nRoute.routes.forEach(routerOpen);
-        }
+    //只用通知最外层即可
+    nRoute = nRoute.children[n[i]];
+    oRoute = oRoute.children[o[i]];
+    if (nRoute) {
+        nRoute.routes.forEach(routerOpen);
+        currentRouter = nRoute;
+    }
+    if (oRoute) {
+        oRoute && oRoute.routes.forEach(routerClose);
     }
 }
 
-const routerClose = (e) => { e.data.show = false; }
-const routerOpen = (e) => { e.data.show = true; }
+
+//先对外层环境进行更新，更新插槽然后再进行更新
+const routerClose = (e) => { console.log("关闭", e.fullPath); queueJob(e.wrapVnode.context._patch); e.data.show = false; }
+const routerOpen = (e) => { console.log("开启", e.fullPath); queueJob(e.wrapVnode.context._patch); e.data.show = true; }
 
 
 //检查参数
@@ -89,17 +93,30 @@ function getAllRawChilds(slot) {
 
 function getFullPath(route) {
     let res = [];
-    while (route.parent) {
+    while (route.path) {
         res.push(route.path);
         route = route.parent;
     }
-    return "/" + res.reverse().join("/");
+    res.push("");
+    return res.reverse();
+}
+
+function compareList(l1, l2) {
+    if ((isArray(l1) && isArray(l2))) {
+        for (let i = 0; i < Math.min(l1.length, l2.length); i++) {
+            if (l1[i] !== l2[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 
 //压入栈
-function push(path, sact) {
-    const current = stack[stack.length - 1];
+function addRouter(path, sact) {
+    const current = currentRouter || stack[stack.length - 1];
     const children = (current ? current : Router).children;
     let res = path === "/" ? Router : children[path];
     if (!res) {
@@ -111,11 +128,8 @@ function push(path, sact) {
         }
     }
     res.routes.add(sact);
-    sact.warpRouterSet = res.routes;
-
+    sact.warpRouter = res;
     stack.push(res);
-    const fullPath = getFullPath(res)
-    return fullPath === currentHash.slice(0, fullPath.length);
 }
 
 //出栈
@@ -123,6 +137,8 @@ function pop() {
     stack.pop();
 }
 
+
+window.r = Router;
 export default {
     name: "route",
     isAbstract: true,
@@ -140,22 +156,30 @@ export default {
             Router_init();
         }
         const [path] = checkProps(this.props);
-        this.data.show = push(path, this);
+        addRouter(path, this);
+        const fullPath = getFullPath(this.warpRouter);
+        console.log(fullPath, "被创建", this.warpRouter);
     },
     mounted() {
         pop();
     },
-    beforeUpdate(){
-        console.log(this.props.path,"开始更新")
+    beforeDestory() {
+        this.warpRouter.routes.delete(this);
+        const fullPath = getFullPath(this.warpRouter);
+        const rawChilds = getAllRawChilds(this.$slot);
+        rawChilds.length = 0;
+        console.log(fullPath, "已经移除");
     },
     render(h) {
-        if (!this.data.show) {
-            return;
-        }
         const rawChilds = getAllRawChilds(this.$slot);
-        const child = h(this.props.component, this.props, rawChilds,undefined,this.wrapVnode.zid);
-        child.achor = this.wrapVnode.achor;
-        child.parent = this.wrapVnode.parent;
-        return child;
+        const fullPath = this.fullPath = getFullPath(this.warpRouter);
+        let show = compareList(fullPath, currentHash.split("/") || [""])
+        console.log(fullPath, currentHash.split("/") || [""], show);
+        if (show) {
+            const child = h(this.props.component, this.props, rawChilds, undefined, this.wrapVnode.zid);
+            child.achor = this.wrapVnode.achor;
+            child.parent = this.wrapVnode.parent;
+            return child;
+        }
     },
 }

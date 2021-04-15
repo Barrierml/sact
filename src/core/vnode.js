@@ -18,6 +18,7 @@ export class Vnode {
         if (b && b.class) {
             b.class = renClass(b.class);
         }
+
         this.componentOptions = d
 
         this.type = type;

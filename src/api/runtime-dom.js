@@ -24,7 +24,7 @@ export default {
         }
     },
     remove(child){
-        const parent = child.parentNode;
+        const parent = child && child.parentNode;
         parent && parent.removeChild(child);
     },
     replace(odom, ndom) {

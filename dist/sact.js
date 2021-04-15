@@ -217,7 +217,7 @@ function getDataInData(VName, data) {
 
 const leftAttrsTag = "{{"
 const rightAttrsTag = "}}"
-const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&_$]+)\\s*${rightAttrsTag}`)
+const AttrsTag = new RegExp(`${leftAttrsTag}\\s*([\\w\\.\\(\\)\\]\\[\\|&_$\\?\\:\\s\\']+)\\s*${rightAttrsTag}`)
 //判断含有为动态变量并返getDynamicName回变量名 出现的位置 和最后的位置
 function getDynamicName(str) {
     let res = AttrsTag.exec(str)
@@ -471,10 +471,14 @@ class Vnode {
     constructor(vm, a, b, c, d, istext, zid, type) {
         this.context = vm
         this.tag = istext ? "_text_" : a
-        this.data = b
+        this.data = b || new Object();
         if (b && b.style) {
             b.style = renStyle(b.style);
         }
+        if (b && b.class) {
+            b.class = renClass(b.class);
+        }
+
         this.componentOptions = d
 
         this.type = type;
@@ -670,6 +674,23 @@ function renStyle(style, seen = {}) {
     }
     return seen;
 }
+
+function renClass(cls){
+    let res = "";
+    if(isObj(cls)){
+        for(let i in cls){
+            if(cls[i]){
+                res += String(i) + " ";
+            }
+        }
+    }
+    else if(isArray(cls)){
+        cls.forEach((i)=>{
+            res += i + " ";
+        })
+    }
+    return res;
+}
 // CONCATENATED MODULE: ./src/core/generate.js
 //将ast语法树转化成语法
 
@@ -828,8 +849,6 @@ function genData(ast) {
     if (hasShow) {
         ast.type = vnodeType.dynamic;
         style += `{display:${hasShow} ? '' : 'none'},`;
-        props += `"sShow": true,`;
-        hasProps = true;
         hasStyle = true;
     }
 
@@ -989,7 +1008,7 @@ function parseText(text) {
 }
 // CONCATENATED MODULE: ./src/core/scheduler.js
 //下面是异步刷新
-const queue = [];
+let queue = [];
 let flushing = false;
 let flushingPending = false;
 let has = {};
@@ -1020,7 +1039,13 @@ function flushSchedulerQueue() {
     flushingPending = false;
     flushing = true;
 
-    queue.forEach((v)=>{
+    //按照排序后开始执行，防止乱序后的锚点出现错误
+    //父节点的job都会比子节点大，这时在创建时就确定的了。
+    //通过排序可以解决父节点之后子节点多余的patch问题。
+    //(这个bug是在制作route时发现的，真是花了老长时间才解决...)
+    queue = queue.sort((a, b) => a.id - b.id);
+
+    queue.forEach((v) => {
         v();
     })
 
@@ -1100,7 +1125,7 @@ function createEffect(fn, opts) {
     let effect = function _createEffect() {
         console.log(...arguments)
         if (!effect.active) {
-            return options.scheduler ? undefined : fn()
+            return (options && options.scheduler) ? undefined : fn()
         }
         //队列内不存在就加入队列
         if (effectStack.indexOf(effect) === -1) {
@@ -1393,8 +1418,16 @@ function createDeleter(target, key) {
             parent.appendChild(child);
         }
     },
+    create(tag){
+        if(tag === "svg" || tag === "path"){
+            return document.createElementNS('http://www.w3.org/2000/svg',tag);
+        }
+        else{
+            return document.createElement(tag);
+        }
+    },
     remove(child){
-        const parent = child.parentNode;
+        const parent = child && child.parentNode;
         parent && parent.removeChild(child);
     },
     replace(odom, ndom) {
@@ -1426,6 +1459,9 @@ function createDeleter(target, key) {
 
 
 
+
+const body = document.querySelector("body");
+
 function render_render(vnode, container) {
     if (container) { //覆盖渲染
         let rel;
@@ -1436,10 +1472,10 @@ function render_render(vnode, container) {
     else if (vnode.context.isComponent) { //组件初始化
         renElement(vnode);
     }
-    else if (vnode.warpSact) { //抽象组件安装
-        let achor = vnode.achor || vnode.parent;
-        if (achor) {
-            achor = getRealVnode(achor);
+    else if (vnode.warpSact && vnode.warpSact.isAbstract) { //抽象组件安装
+        let achorVnode = vnode.achor || vnode.parent;
+        if (achorVnode) {
+            let achor = getRealVnode(achorVnode);
             let rel = vnode.element || renElement(vnode);
 
             //防止第一个元素插入的失败
@@ -1448,9 +1484,15 @@ function render_render(vnode, container) {
                 runtime_dom.insert(rel, achor, achor.firstChild);
             }
             else {
+                //修复了因为job队列的刷新时机所导致的已经删除锚点问题 #2021/4/15
+                if (!achor.parentElement) {
+                    while (!achor.parentElement) {
+                        achorVnode = achorVnode.achor;
+                        achor = getRealVnode(achorVnode);
+                    }
+                }
                 runtime_dom.insert(rel, achor.parentElement, runtime_dom.next(achor));
             }
-
         }
     }
     else {
@@ -1510,7 +1552,6 @@ function patch(v1, v2, container) {
     }
     else {
         console.warn("[Sact-warn]:not aivailable Vnode", v1, v2);
-        throw new Error(`[Sact-error]:arguments error，please check！`)
     }
 }
 
@@ -1553,7 +1594,6 @@ function patchVnode(v1, v2) {
         prePatchChildren(v1.children, v2.children, v1.element);
     }
     patchRefs(v1, v2);
-
 }
 
 
@@ -1620,7 +1660,7 @@ function patchCompent(v1, v2) {
     if (Ctor.callHooks("shouldUpdate")(oldValue[1], newValue[1])) {
         if (shouldPacthComponent(oldValue, newValue)) {
             Ctor._patch();
-            if (Ctor.isShowAttr) {
+            if (Ctor._isShowAttr) {
                 setAttrs(Ctor.$ele, Ctor.props, Ctor);
             }
         }
@@ -1797,6 +1837,7 @@ function sameAttrs(obj1, obj2, name) {
 }
 
 function renElement(vnode) {
+
     //文本
     if (vnode.tag === "_text_") {
         vnode.element = document.createTextNode(vnode.text);
@@ -1813,7 +1854,7 @@ function renElement(vnode) {
 
     //正常元素
     const { tag, data, children, key } = vnode;
-    const rel = (vnode.element = document.createElement(tag));
+    const rel = (vnode.element = runtime_dom.create(tag));
 
     if (data) {
         setAttrs(rel, data, vnode["context"]);
@@ -1873,7 +1914,7 @@ function renComponent(vnode, option) {
     //开始渲染
     let ele = null;
 
-    Ctor.patch();
+    Ctor._patch();
     Ctor._mounted = true;
 
     ele = Ctor.$ele;
@@ -1882,13 +1923,14 @@ function renComponent(vnode, option) {
         Ctor.$vnode.parent = vnode;
     }
 
-    if (Ctor.isShowAttr) {
+    if (Ctor._isShowAttr) {
         setAttrs(ele, props, Ctor);
     }
 
     if (key) {
         runtime_dom.setAttribute(ele, "key", key);
     }
+
     return ele;
 }
 
@@ -1930,32 +1972,39 @@ function parsePropsData(Ctor, data) {
     for (let i of Reflect.ownKeys(data)) {
         let attrs = data[i];
         //style 与 class除外
-        if (i === "style" || i === "class") {
+        if (i === "style" || i === "staticClass") {
             res[i] = attrs;
         }
         else if (isObj(attrs)) {
             for (let key of Reflect.ownKeys(attrs)) {
                 let attr = attrs[key];
                 key = toCamelCase(key);
+                if (Ctor._propsTransfrom && attr === "") {
+                    attr = true;
+                }
                 props[key] = attr;
             }
+        }
+        else {
+            props[i] = attrs;
         }
     }
 
     //检查props
-    if (propsCheck) {
+    if (propsCheck && Ctor._propsCheck) {
         for (let prop of Reflect.ownKeys(propsCheck)) {
             let checker = propsCheck[prop];
             res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
-
+    else if (!Ctor._propsCheck) {
+        res = props;
+    }
     else if (Reflect.ownKeys(props).length > 0) {
         sactWarn(`this component '${Ctor.name}' not defined props,
                     but this component was feeded in some props '${Reflect.ownKeys(props)}',this props will be not available,
                     beacuse those maybe will cause some wrong. we do not recommond`)
     }
-
     Ctor.props = res;
     return res;
 }
@@ -1981,9 +2030,9 @@ function checkProps(checker, attr, key, cname) {
     if (isFunc(validator) && validator(attr)) {
         return attr;
     }
-
     //正常类型检查
     let type_error = `\n[Sact-warn]:this component '${cname}', it's prop [${key}] should be '${String(type)}',but it was feeded in '${typeof attr}',please check this!`
+
     if (isString(type)) {
         if (type === "any") {
             return attr;
@@ -2024,18 +2073,23 @@ function checkProps(checker, attr, key, cname) {
 }
 
 
-
-function destroryVnode(vnode) {
+function clearVnode(vnode) {
     if (vnode.componentOptions) {
         vnode.componentOptions.Ctor.destory();
     }
+    vnode.children && vnode.children.forEach(e => destroryVnode(e));
+    runtime_dom.remove(vnode.element);
+    destroryRefs(vnode);
+}
+
+
+function destroryVnode(vnode) {
     if (vnode.onDestrory) {
-        callHooks(vnode, "onDestrory", vnode.element, () => runtime_dom.remove(vnode.element));
+        callHooks(vnode, "onDestrory", vnode.element, () => clearVnode(vnode));
     }
     else {
-        runtime_dom.remove(vnode.element);
+        clearVnode(vnode);
     }
-    destroryRefs(vnode);
 }
 
 
@@ -2221,7 +2275,7 @@ const animationName = {
 
 //防止嵌套其他抽象组件
 function getRealChild(vnode) {
-    var compOptions = vnode && vnode.componentOptions;
+    const compOptions = vnode && vnode.componentOptions;
     if (compOptions && compOptions.Ctor.isAbstract) {
         return getRealChild(getFirstComponentChild(compOptions.children))
     } else {
@@ -2229,12 +2283,11 @@ function getRealChild(vnode) {
     }
 }
 
-
 function getFirstComponentChild(vnodes) {
     if (isArray(vnodes) && vnodes.length === 1) {
         return vnodes[0];
     }
-    else if(isArray(vnodes) && vnodes.length > 1){
+    else if (isArray(vnodes) && vnodes.length > 1) {
         console.log(vnodes);
         throw new Error("transiton just recive a child, more children please use transition-group")
     }
@@ -2246,6 +2299,11 @@ function getFirstComponentChild(vnodes) {
 function getPos(ele) {
     return ele.getBoundingClientRect();
 }
+
+function getCtor(vnode) {
+    return vnode && vnode.componentOptions && vnode.componentOptions.Ctor
+}
+
 
 //初始化transtion参数
 function initdata(props) {
@@ -2262,31 +2320,31 @@ function initdata(props) {
     res.leaveActive = name + animationName.LEAVE + animationName.ACTIVE;
     res.leaveTo = name + animationName.LEAVE + animationName.TO;
 
-    exceptExtend(res,props);
+    exceptExtend(res, props);
     return res;
 }
 
-function removeClass(ele,...cls) {
-    if(cls && ele){
+function removeClass(ele, ...cls) {
+    if (cls && ele) {
         ele.classList.remove(...cls);
     }
 }
 
-function addClass(ele,...cls) {
-    if(cls && ele){
+function addClass(ele, ...cls) {
+    if (cls && ele) {
         ele.classList.add(...cls);
     }
 }
 
-function clearClass(ele,opts) {
-    for(let i of ["enter",
-    "enterActive",
-    "enterTo",
-    "leave",
-    "leaveTo",
-    "leaveActive"]){
-        if(ele.classList.contains(opts[i])){
-            removeClass(ele,opts[i]);
+function clearClass(ele, opts) {
+    for (let i of ["enter",
+        "enterActive",
+        "enterTo",
+        "leave",
+        "leaveTo",
+        "leaveActive"]) {
+        if (ele.classList.contains(opts[i])) {
+            removeClass(ele, opts[i]);
         }
     }
 }
@@ -2296,73 +2354,81 @@ function clearClass(ele,opts) {
 function whenCreate(ele) {
 
     const self = this;
-    const {opts} = this._data;
+    const { opts } = this._data;
 
-    
+
     function _created() {
-        removeClass(ele,opts.enterTo,opts.enterActive);
+        removeClass(ele, opts.enterTo, opts.enterActive);
         ele.removeEventListener("transitionend", _created);
-        ele.removeEventListener("animationend",_created);
+        ele.removeEventListener("animationend", _created);
     }
 
 
     //先添加enter类
-    addClass(ele,opts.enter);
+    addClass(ele, opts.enter);
     ele.addEventListener("transitionend", self.enterCB = _created);
-    ele.addEventListener("animationend",_created);
+    ele.addEventListener("animationend", _created);
     //创建完元素后添加enterActive和enterTo
-    setTimeout(()=>{
-        clearClass(ele,opts);
-        addClass(ele,opts.enterActive,opts.enterTo);
-    },0)
+    setTimeout(() => {
+        clearClass(ele, opts);
+        addClass(ele, opts.enterActive, opts.enterTo);
+    }, 0)
 }
 
 //移除时插入的类名
-function whenLeave(ele,done) {
+function whenLeave(ele, done) {
     const self = this;
-    const {opts} = this._data;
+    const { opts } = this._data;
     const s = ele.style;
 
     //为none的元素不会触发动画结束事件，所以直接结束动画
-    if(s.display === "none"){
+    if (s.display === "none") {
         done && done();
         return;
     }
 
     function _leaved() {
-        removeClass(ele,opts.leaveTo,opts.leaveActive);
+        removeClass(ele, opts.leaveTo, opts.leaveActive);
         done && done();
         self._isLeaving = false;
         ele.removeEventListener("transitionend", _leaved);
-        ele.removeEventListener("animationend",_leaved);
+        ele.removeEventListener("animationend", _leaved);
     }
 
     //先添加leave类
-    addClass(ele,opts.leave);
+    addClass(ele, opts.leave);
 
     ele.addEventListener("transitionend", self.leaveCb = _leaved);
-    ele.addEventListener("animationend",_leaved);
+    ele.addEventListener("animationend", _leaved);
 
     //添加标记防止重复
     this._isLeaving = true;
     //然后异步添加leaveActive和leaveTo
-    setTimeout(()=>{
-        clearClass(ele,opts);
-        addClass(ele,opts.leaveActive,opts.leaveTo);
-    },0)
+    setTimeout(() => {
+        clearClass(ele, opts);
+        addClass(ele, opts.leaveActive, opts.leaveTo);
+    }, 0)
 }
 
 
-function dealShow(data,child) {
-    if(child.data && child.data.style){
-        const nowShow = child.data.style.display === "none" ? false : true;
+function dealShow(data, child) {
+    const props = child.context.props;
+    let cd = child.data;
+
+    //s-show 外层组件时的判断
+    if (props && props.style) {
+        extend(cd.style = cd.style || {}, props.style)
+        Reflect.deleteProperty(props, "style");
+    }
+    if (cd.style) {
+        const nowShow = cd.style.display === "none" ? false : true;
         child.isShow = !!(!data.lastShow && nowShow);
         child.isHidden = !!(data.lastShow && !nowShow);
         data.lastShow = nowShow;
     }
 }
 
-const transitionProps =  {
+const transitionProps = {
     "mode": { //模式，默认为先出后进
         default: "out-in",
         validator(value) {
@@ -2380,6 +2446,10 @@ const transitionProps =  {
         type: "string",
         default: "500"
     },
+    "delay": { //延迟后使用
+        type: "string",
+        default: "0",
+    },
 }
 
 
@@ -2388,43 +2458,215 @@ const transitionProps =  {
     name: 'transition',
     isAbstract: true,
     isShowAttr: false,
-    props:transitionProps,
+    props: transitionProps,
     beforeMount() {
         this._data = {};
         this._data.opts = initdata(this.props);
     },
-    mounted(){
+    mounted() {
         this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
-    updated(){
+    updated() {
         this.wrapVnode.onDestrory = whenLeave.bind(this);
     },
     render(h) {
 
-        if(this._isLeaving){
-            if(this.leaveCb){
+        if (this._isLeaving) {
+            if (this.leaveCb) {
                 this.leaveCb.call(this);
             }
         }
-
         let child = getRealChild(getFirstComponentChild(this.$slot["default"]))
 
         if (!child) {
             return;
         }
+        const create = whenCreate.bind(this);
+        const destrory = whenLeave.bind(this);
 
-        dealShow(this._data,child)
+        //处理s-show
+        dealShow(this._data, child);
+        child.onCreated = create;
+        child.onDestrory = destrory
 
-        child.onCreated = whenCreate.bind(this);
-        child.onDestrory = whenLeave.bind(this);
+        //挂载数据
         child._data = this._data;
         child.achor = this.wrapVnode.achor;
         child.parent = this.wrapVnode.parent;
+
+        //处理外包裹
+        const warpComponent = getCtor(this.wrapVnode.parent) || (!this.wrapVnode.parent && this.wrapVnode.context);
+        if(warpComponent){
+            warpComponent.wrapVnode.onDestrory = destrory;
+        }
+
         this.oldChild = child;
         return child;
     }
 });
+// CONCATENATED MODULE: ./src/component/router.js
+
+//用来存储所有路由信息
+const Router = {
+    children: {},
+    routes: new Set(),
+};
+//用来保存递归深度
+const stack = [];
+const getHash = (hash) => (hash && hash.slice(1)) || "/";
+let currentHash = getHash(window.location.hash);
+let oldHash = currentHash;
+let currentRouter = null;
+//接收参数
+const router_props = {
+    "path": "string",
+    "component": "string",
+}
+
+let Router_inited = false;
+
+window.r = Router;
+
+function Router_init() {
+    window.addEventListener('hashchange', () => {
+        currentHash = getHash(window.location.hash);
+        route();
+        oldHash = currentHash;
+    })
+    Router_inited = true;
+}
+
+
+function route() {
+    const n = currentHash.split("/");
+    const o = oldHash.split("/");
+
+    let nRoute = Router; //新旧指针
+    let oRoute;
+
+    let i = 1;
+    for (; i < n.length; i++) {
+        if (n[i] !== o[i]) {
+            break;
+        }
+        else {
+            nRoute = nRoute && nRoute.children[n[i]];
+        }
+    }
+    let j = i;
+    oRoute = nRoute;
+
+    //通知新的开启旧的关闭
+    //只用通知最外层即可
+    nRoute = nRoute.children[n[i]];
+    oRoute = oRoute.children[o[j]];
+    if (oRoute) {
+        oRoute && oRoute.routes.forEach(routerClose);
+    }
+    if (nRoute) {
+        nRoute.routes.forEach(routerOpen);
+        currentRouter = nRoute;
+    }
+}
+
+const routerClose = (e) => { e.data.show = false; }
+const routerOpen = (e) => { e.data.show = true; }
+
+
+//检查参数
+function router_checkProps(props) {
+    const { path, component } = props;
+    if (!path) {
+        sactWarn(`invaild path of router '${path}', please check!`);
+        throw Error(`invaild path of router '${path}', please check!`);
+    }
+    if (!component) {
+        sactWarn(`invaild component of router '${component}', this component will be replaced by a div box!`);
+        props.component = 'div';
+    }
+    return [path, component];
+}
+
+//获取所有子组件
+function getAllRawChilds(slot) {
+    return slot && slot["default"];
+}
+
+function getFullPath(route) {
+    let res = [];
+    while (route) {
+        res.push(route.path);
+        route = route.parent;
+    }
+    return res.reverse().join("/") || "/";
+}
+
+
+//压入栈
+function push(path, sact) {
+    const current = currentRouter || stack[stack.length - 1];
+    const children = (current ? current : Router).children;
+    let res = path === "/" ? Router : children[path];
+    if (!res) {
+        res = children[path] = {
+            path,
+            children: {},
+            parent: current ? current : Router,
+            routes: new Set(),
+        }
+    }
+    res.routes.add(sact);
+    sact.warpRouterSet = res.routes;
+
+    stack.push(res);
+    const fullPath = getFullPath(res)
+    return fullPath === currentHash.slice(0, fullPath.length);
+}
+
+//出栈
+function pop() {
+    stack.pop();
+}
+
+/* harmony default export */ var router = ({
+    name: "route",
+    isAbstract: true,
+    isShowAttr: false,
+    propsCheck: false,
+    props: router_props,
+    data() {
+        return {
+            show: false,
+        }
+    },
+    beforeMount() {
+        this.components = this.wrapVnode.context.components;
+        if (!Router_inited) {
+            Router_init();
+        }
+        const [path] = router_checkProps(this.props);
+        this.data.show = push(path, this);
+    },
+    mounted() {
+        pop();
+    },
+    beforeDestory() {
+        this.warpRouterSet.delete(this);
+    },
+    render(h) {
+        if (!this.data.show) {
+            return;
+        }
+        const rawChilds = getAllRawChilds(this.$slot);
+        const child = h(this.props.component, this.props, rawChilds, undefined, this.wrapVnode.zid);
+        child.achor = this.wrapVnode.achor;
+        child.parent = this.wrapVnode.parent;
+        return child;
+    },
+});
 // CONCATENATED MODULE: ./src/core/init.js
+
+
 
 
 
@@ -2441,14 +2683,15 @@ function initAll(options) {
     this.$options = options;
     initWhen(this);
     this.callHooks("beforeCreate");
+    initParma(this);
     initElement(this);
     initProps(this);
     initMethod(this);
     initComputed(this);
     initData(this);
     initComponent(this);
-    this.callHooks("created");
 
+    this.callHooks("created");
     //仓库模式无需初始化
     if (this._isStore) {
         initStore(this);
@@ -2457,8 +2700,16 @@ function initAll(options) {
         initRender(this);
         initPatch(this);
     }
+
 }
 
+
+function initParma(sact) {
+    const { isShowAttr, propsTransfrom, propsCheck } = sact.$options;
+    sact._isShowAttr = isShowAttr === undefined ? true : isShowAttr; //默认显示属性在组件上
+    sact._propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
+    sact._propsCheck = propsCheck === undefined ? true : propsCheck; //是否开启属性检查,非声明props不接受
+}
 //初始化对象
 function initElement(sact) {
 
@@ -2616,18 +2867,20 @@ function initComponent(sact) {
         sact.isComponent = true;
         sact.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
-        sact.isShowAttr = options.isShowAttr === undefined ? true : false; //默认显示属性在组件上
         sact._shouldMount = false;
     }
-    //内置keep-alive 与 transition;
-    sact.components = { transition: sact_Sact.component(transition) };
+    //内置keep-alive、 transition 、route ;
+    sact.components = { transition: sact_Sact.component(transition), route: sact_Sact.component(router) };
     if (isObj(component)) { //使用组件时,将组件添加到环境中
         for (let con of Reflect.ownKeys(component)) {
-            if (isObj(component[con])) {
-                sact.components[component[con].sname] = sact_Sact.component(component[con]);
-            }
-            else if (component[con].isComponent) {
+            if (component[con].isComponent) {
                 sact.components[component[con].sname] = component[con];
+            }
+            else if (isObj(component[con])) {
+                if (!component[con].name) {
+                    throw new Error("[Sact-warn]:you must set a name for component!")
+                }
+                sact.components[component[con].name] = sact_Sact.component(component[con]);
             }
         }
     }
@@ -2731,9 +2984,12 @@ function createProps(obj) {
         type: "any",  //类型，可以为列表
         default: undefined, //默认值
         validator: null, //验证函数，要返回true或false
-        required: false,  //默认需要
+        required: false,  //是否需要
     }
-    if (isObj(obj)) {
+    if (isArray(obj)) {
+        res.type = obj;
+    }
+    else if (isObj(obj)) {
         res = obj;
     }
     else {
@@ -2799,7 +3055,6 @@ function initPatch(sact) {
         if (this.$vnode) {
             this.$vnode.warpSact = this;
         }
-
         patch(oldVnode, this.$vnode, this.$ele);
 
         this.$ele = this.$vnode && this.$vnode.element;
@@ -2812,14 +3067,14 @@ function initPatch(sact) {
         }
     }
 
-    sact.patch = new_reactivity_effect(job.bind(sact), {
+    sact._patch = new_reactivity_effect(job.bind(sact), {
         lazy: true
     });
 
-    recordInstanceBoundEffect(sact.patch, sact);
+    recordInstanceBoundEffect(sact._patch, sact);
 
     if (sact._shouldMount) {
-        sact.patch();
+        sact._patch();
         sact._mounted = true;
         sact._shouldMount = false;
     }
@@ -2848,11 +3103,12 @@ class sact_Sact {
       stop(v);
     });
     this.effects.length = 0;
+    this.$vnode = undefined;
   }
 
 
 }
-sact_Sact.version = "0.1.4";
+sact_Sact.version = "0.2.1";
 
 sact_Sact.component = function (options) {
   if(!options.name){

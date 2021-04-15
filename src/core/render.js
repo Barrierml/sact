@@ -1,4 +1,5 @@
 import dom from "../api/runtime-dom.js";
+import Sact from "../sact.js";
 import { extend, getVnodeAttr, isArray, isFunc, isObj, isString, sactWarn } from "../tools/untils.js"
 
 
@@ -11,10 +12,18 @@ function render(vnode, container) {
         dom.replace(container, rel);
         vnode.context.$ele = rel;
     }
-    else if (vnode.context.isComponent && !(vnode.warpSact && vnode.warpSact.isAbstract)) { //组件初始化
+    else {
+        console.warn("[Sact-warn]:", vnode);
+        throw new Error("渲染vnode错误！没有真实元素存在！")
+    }
+}
+
+
+function renderCom(vnode) {
+    if (!vnode.context._mounted) { //组件初始化
         renElement(vnode);
     }
-    else if (vnode.warpSact) { //抽象组件安装
+    else { //抽象组件安装
         let achorVnode = vnode.achor || vnode.parent;
         if (achorVnode) {
             let achor = getRealVnode(achorVnode);
@@ -37,12 +46,7 @@ function render(vnode, container) {
             }
         }
     }
-    else {
-        console.warn("[Sact-warn]:", vnode);
-        throw new Error("渲染vnode错误！没有真实元素存在！")
-    }
 }
-
 
 function getRealVnode(vnode) {
     while (!vnode.element) {
@@ -86,7 +90,7 @@ export function patch(v1, v2, container) {
     }
     //组件第一次创建
     else if (!v1 && v2 && !container) {
-        render(v2, null);
+        renderCom(v2);
     }
     //transiton 过渡，先删除旧的再生成新的
     else if (v1 && v2) {
@@ -201,7 +205,7 @@ function patchCompent(v1, v2) {
     //shouldUpate
     if (Ctor.callHooks("shouldUpdate")(oldValue[1], newValue[1])) {
         if (shouldPacthComponent(oldValue, newValue)) {
-            Ctor.patch();
+            Ctor._patch();
             if (Ctor._isShowAttr) {
                 setAttrs(Ctor.$ele, Ctor.props, Ctor);
             }
@@ -455,8 +459,7 @@ function renComponent(vnode, option) {
 
     //开始渲染
     let ele = null;
-
-    Ctor.patch();
+    Ctor._patch();
     Ctor._mounted = true;
 
     ele = Ctor.$ele;
@@ -472,6 +475,7 @@ function renComponent(vnode, option) {
     if (key) {
         dom.setAttribute(ele, "key", key);
     }
+
     return ele;
 }
 
@@ -614,20 +618,23 @@ function checkProps(checker, attr, key, cname) {
 }
 
 
-
-function destroryVnode(vnode) {
-
+function clearVnode(vnode) {
     if (vnode.componentOptions) {
         vnode.componentOptions.Ctor.destory();
     }
+    vnode.children && vnode.children.forEach(e => destroryVnode(e));
+    dom.remove(vnode.element);
+    destroryRefs(vnode);
+}
+
+
+function destroryVnode(vnode) {
     if (vnode.onDestrory) {
-        callHooks(vnode, "onDestrory", vnode.element, () => dom.remove(vnode.element));
+        callHooks(vnode, "onDestrory", vnode.element, () => clearVnode(vnode));
     }
     else {
-        dom.remove(vnode.element);
+        clearVnode(vnode);
     }
-    destroryRefs(vnode);
-    vnode.element = undefined;
 }
 
 
