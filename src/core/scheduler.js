@@ -1,5 +1,5 @@
 //下面是异步刷新
-const queue = [];
+let queue = [];
 let flushing = false;
 let flushingPending = false;
 let has = {};
@@ -30,7 +30,13 @@ function flushSchedulerQueue() {
     flushingPending = false;
     flushing = true;
 
-    queue.forEach((v)=>{
+    //按照排序后开始执行，防止乱序后的锚点出现错误
+    //父节点的job都会比子节点大，这时在创建时就确定的了。
+    //通过排序可以解决父节点之后子节点多余的patch问题。
+    //(这个bug是在制作route时发现的，真是花了老长时间才解决...)
+    queue = queue.sort((a, b) => a.id - b.id);
+
+    queue.forEach((v) => {
         v();
     })
 

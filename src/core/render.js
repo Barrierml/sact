@@ -2,6 +2,8 @@ import dom from "../api/runtime-dom.js";
 import { extend, getVnodeAttr, isArray, isFunc, isObj, isString, sactWarn } from "../tools/untils.js"
 
 
+const body = document.querySelector("body");
+
 function render(vnode, container) {
     if (container) { //覆盖渲染
         let rel;
@@ -13,9 +15,9 @@ function render(vnode, container) {
         renElement(vnode);
     }
     else if (vnode.warpSact) { //抽象组件安装
-        let achor = vnode.achor || vnode.parent;
-        if (achor) {
-            achor = getRealVnode(achor);
+        let achorVnode = vnode.achor || vnode.parent;
+        if (achorVnode) {
+            let achor = getRealVnode(achorVnode);
             let rel = vnode.element || renElement(vnode);
 
             //防止第一个元素插入的失败
@@ -24,9 +26,15 @@ function render(vnode, container) {
                 dom.insert(rel, achor, achor.firstChild);
             }
             else {
+                //修复了因为job队列的刷新时机所导致的已经删除锚点问题 #2021/4/15
+                if (!achor.parentElement) {
+                    while (!achor.parentElement) {
+                        achorVnode = achorVnode.achor;
+                        achor = getRealVnode(achorVnode);
+                    }
+                }
                 dom.insert(rel, achor.parentElement, dom.next(achor));
             }
-
         }
     }
     else {
@@ -128,7 +136,6 @@ function patchVnode(v1, v2) {
         prePatchChildren(v1.children, v2.children, v1.element);
     }
     patchRefs(v1, v2);
-
 }
 
 
@@ -195,7 +202,7 @@ function patchCompent(v1, v2) {
     if (Ctor.callHooks("shouldUpdate")(oldValue[1], newValue[1])) {
         if (shouldPacthComponent(oldValue, newValue)) {
             Ctor.patch();
-            if (Ctor.isShowAttr) {
+            if (Ctor._isShowAttr) {
                 setAttrs(Ctor.$ele, Ctor.props, Ctor);
             }
         }
@@ -372,6 +379,7 @@ function sameAttrs(obj1, obj2, name) {
 }
 
 function renElement(vnode) {
+
     //文本
     if (vnode.tag === "_text_") {
         vnode.element = document.createTextNode(vnode.text);
@@ -457,7 +465,7 @@ function renComponent(vnode, option) {
         Ctor.$vnode.parent = vnode;
     }
 
-    if (Ctor.isShowAttr) {
+    if (Ctor._isShowAttr) {
         setAttrs(ele, props, Ctor);
     }
 
@@ -512,28 +520,32 @@ function parsePropsData(Ctor, data) {
             for (let key of Reflect.ownKeys(attrs)) {
                 let attr = attrs[key];
                 key = toCamelCase(key);
-                if(Ctor.propsTransfrom && attr === ""){
+                if (Ctor._propsTransfrom && attr === "") {
                     attr = true;
                 }
                 props[key] = attr;
             }
         }
+        else {
+            props[i] = attrs;
+        }
     }
 
     //检查props
-    if (propsCheck) {
+    if (propsCheck && Ctor._propsCheck) {
         for (let prop of Reflect.ownKeys(propsCheck)) {
             let checker = propsCheck[prop];
             res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
-
+    else if (!Ctor._propsCheck) {
+        res = props;
+    }
     else if (Reflect.ownKeys(props).length > 0) {
         sactWarn(`this component '${Ctor.name}' not defined props,
                     but this component was feeded in some props '${Reflect.ownKeys(props)}',this props will be not available,
                     beacuse those maybe will cause some wrong. we do not recommond`)
     }
-
     Ctor.props = res;
     return res;
 }
@@ -604,6 +616,7 @@ function checkProps(checker, attr, key, cname) {
 
 
 function destroryVnode(vnode) {
+
     if (vnode.componentOptions) {
         vnode.componentOptions.Ctor.destory();
     }
@@ -614,6 +627,7 @@ function destroryVnode(vnode) {
         dom.remove(vnode.element);
     }
     destroryRefs(vnode);
+    vnode.element = undefined;
 }
 
 

@@ -38,9 +38,10 @@ export default function initAll(options) {
 
 
 function initParma(sact) {
-    const { isShowAttr, propsTransfrom } = sact.$options;
-    sact.isShowAttr = isShowAttr === undefined ? true : false; //默认显示属性在组件上
-    sact.propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
+    const { isShowAttr, propsTransfrom, propsCheck } = sact.$options;
+    sact._isShowAttr = isShowAttr === undefined ? true : isShowAttr; //默认显示属性在组件上
+    sact._propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
+    sact._propsCheck = propsCheck === undefined ? true : propsCheck; //是否开启属性检查,非声明props不接受
 }
 //初始化对象
 function initElement(sact) {
