@@ -191,7 +191,7 @@ export function trigger(target, type, key, newValue, oldValue) {
 
 export function recordInstanceBoundEffect(effect, instance) {
     if (instance) {
-        (instance.effects || (instance.effects = [])).push(effect)
+        (instance.$effects || ($instance.effects = [])).push(effect)
     }
 }
 

@@ -20,7 +20,7 @@ function render(vnode, container) {
 
 
 function renderCom(vnode) {
-    if (!vnode.context._mounted) { //组件初始化
+    if (!vnode.context.$swtich._mounted) { //组件初始化
         renElement(vnode);
     }
     else { //抽象组件安装
@@ -206,7 +206,7 @@ function patchCompent(v1, v2) {
     if (Ctor.callHooks("shouldUpdate")(oldValue[1], newValue[1])) {
         if (shouldPacthComponent(oldValue, newValue)) {
             Ctor._patch();
-            if (Ctor._isShowAttr) {
+            if (Ctor.$swtich._isShowAttr) {
                 setAttrs(Ctor.$ele, Ctor.props, Ctor);
             }
         }
@@ -443,6 +443,12 @@ function renComponent(vnode, option) {
     let { Ctor, children } = option;
     const { key, data } = vnode;
 
+
+    if (!isFunc(Ctor)) {
+        sactWarn("The Component has inited, Could not init,please check you slot has freshen。", vnode);
+        throw Error("The Component has inited, Could not init,please check you slot has freshen。");
+    }
+
     //渲染的时候再实例化Ctor;
     //这样可以减少很大一部分的内存占用
     Ctor = option.Ctor = Ctor();
@@ -460,7 +466,7 @@ function renComponent(vnode, option) {
     //开始渲染
     let ele = null;
     Ctor._patch();
-    Ctor._mounted = true;
+    Ctor.$swtich._mounted = true;
 
     ele = Ctor.$ele;
 
@@ -468,7 +474,7 @@ function renComponent(vnode, option) {
         Ctor.$vnode.parent = vnode;
     }
 
-    if (Ctor._isShowAttr) {
+    if (Ctor.$swtich._isShowAttr) {
         setAttrs(ele, props, Ctor);
     }
 
@@ -524,7 +530,7 @@ function parsePropsData(Ctor, data) {
             for (let key of Reflect.ownKeys(attrs)) {
                 let attr = attrs[key];
                 key = toCamelCase(key);
-                if (Ctor._propsTransfrom && attr === "") {
+                if (Ctor.$swtich._propsTransfrom && attr === "") {
                     attr = true;
                 }
                 props[key] = attr;
@@ -536,13 +542,13 @@ function parsePropsData(Ctor, data) {
     }
 
     //检查props
-    if (propsCheck && Ctor._propsCheck) {
+    if (propsCheck && Ctor.$swtich._propsCheck) {
         for (let prop of Reflect.ownKeys(propsCheck)) {
             let checker = propsCheck[prop];
             res[prop] = checkProps(checker, props[prop], prop, Ctor.name)
         }
     }
-    else if (!Ctor._propsCheck) {
+    else if (!Ctor.$swtich._propsCheck) {
         res = props;
     }
     else if (Reflect.ownKeys(props).length > 0) {

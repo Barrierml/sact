@@ -243,7 +243,20 @@ const isIntegerKey = (key) =>
     isString(key) &&
     key !== 'NaN' &&
     key[0] !== '-' &&
-    '' + parseInt(key, 10) === key
+    '' + parseInt(key, 10) === key;
+
+
+function compareStringList(l1,l2) {
+    if((isArray(l1) && isArray(l2)) && (l1.length === l2.length)){
+        for(let i = 0;i<l1.length;i++){
+            if(l1[i] !== l2[i]){
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
 // CONCATENATED MODULE: ./src/core/Parser.js
 
 
@@ -1469,10 +1482,18 @@ function render_render(vnode, container) {
         runtime_dom.replace(container, rel);
         vnode.context.$ele = rel;
     }
-    else if (vnode.context.isComponent) { //组件初始化
+    else {
+        console.warn("[Sact-warn]:", vnode);
+        throw new Error("渲染vnode错误！没有真实元素存在！")
+    }
+}
+
+
+function renderCom(vnode) {
+    if (!vnode.context._mounted) { //组件初始化
         renElement(vnode);
     }
-    else if (vnode.warpSact && vnode.warpSact.isAbstract) { //抽象组件安装
+    else { //抽象组件安装
         let achorVnode = vnode.achor || vnode.parent;
         if (achorVnode) {
             let achor = getRealVnode(achorVnode);
@@ -1495,12 +1516,7 @@ function render_render(vnode, container) {
             }
         }
     }
-    else {
-        console.warn("[Sact-warn]:", vnode);
-        throw new Error("渲染vnode错误！没有真实元素存在！")
-    }
 }
-
 
 function getRealVnode(vnode) {
     while (!vnode.element) {
@@ -1544,7 +1560,7 @@ function patch(v1, v2, container) {
     }
     //组件第一次创建
     else if (!v1 && v2 && !container) {
-        render_render(v2, null);
+        renderCom(v2);
     }
     //transiton 过渡，先删除旧的再生成新的
     else if (v1 && v2) {
@@ -1913,7 +1929,6 @@ function renComponent(vnode, option) {
 
     //开始渲染
     let ele = null;
-
     Ctor._patch();
     Ctor._mounted = true;
 
@@ -2506,6 +2521,7 @@ const transitionProps = {
 });
 // CONCATENATED MODULE: ./src/component/router.js
 
+
 //用来存储所有路由信息
 const Router = {
     children: {},
@@ -2517,6 +2533,7 @@ const getHash = (hash) => (hash && hash.slice(1)) || "/";
 let currentHash = getHash(window.location.hash);
 let oldHash = currentHash;
 let currentRouter = null;
+
 //接收参数
 const router_props = {
     "path": "string",
@@ -2538,9 +2555,10 @@ function Router_init() {
 
 
 function route() {
+
     const n = currentHash.split("/");
     const o = oldHash.split("/");
-
+    console.log("检测到变化,从", o, n)
     let nRoute = Router; //新旧指针
     let oRoute;
 
@@ -2553,24 +2571,26 @@ function route() {
             nRoute = nRoute && nRoute.children[n[i]];
         }
     }
-    let j = i;
+
+    currentRouter = nRoute;
     oRoute = nRoute;
 
     //通知新的开启旧的关闭
     //只用通知最外层即可
     nRoute = nRoute.children[n[i]];
-    oRoute = oRoute.children[o[j]];
-    if (oRoute) {
-        oRoute && oRoute.routes.forEach(routerClose);
-    }
+    oRoute = oRoute.children[o[i]];
     if (nRoute) {
-        nRoute.routes.forEach(routerOpen);
+        nRoute.routes.forEach(routerTigger);
         currentRouter = nRoute;
+    }
+    if (oRoute) {
+        oRoute && oRoute.routes.forEach(routerTigger);
     }
 }
 
-const routerClose = (e) => { e.data.show = false; }
-const routerOpen = (e) => { e.data.show = true; }
+
+//先对外层环境进行更新，更新插槽然后再进行更新
+const routerTigger = (e) => { queueJob(e.wrapVnode.context._patch); queueJob(e._patch)}
 
 
 //检查参数
@@ -2594,16 +2614,29 @@ function getAllRawChilds(slot) {
 
 function getFullPath(route) {
     let res = [];
-    while (route) {
+    while (route.path) {
         res.push(route.path);
         route = route.parent;
     }
-    return res.reverse().join("/") || "/";
+    res.push("");
+    return res.reverse();
+}
+
+function compareList(l1, l2) {
+    if ((isArray(l1) && isArray(l2))) {
+        for (let i = 0; i < l1.length; i++) {
+            if (l1[i] !== l2[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
 }
 
 
 //压入栈
-function push(path, sact) {
+function addRouter(path, sact) {
     const current = currentRouter || stack[stack.length - 1];
     const children = (current ? current : Router).children;
     let res = path === "/" ? Router : children[path];
@@ -2616,11 +2649,8 @@ function push(path, sact) {
         }
     }
     res.routes.add(sact);
-    sact.warpRouterSet = res.routes;
-
+    sact.warpRouter = res;
     stack.push(res);
-    const fullPath = getFullPath(res)
-    return fullPath === currentHash.slice(0, fullPath.length);
 }
 
 //出栈
@@ -2628,6 +2658,8 @@ function pop() {
     stack.pop();
 }
 
+
+window.r = Router;
 /* harmony default export */ var router = ({
     name: "route",
     isAbstract: true,
@@ -2645,23 +2677,31 @@ function pop() {
             Router_init();
         }
         const [path] = router_checkProps(this.props);
-        this.data.show = push(path, this);
+        addRouter(path, this);
+        const fullPath = getFullPath(this.warpRouter);
+        console.log(fullPath, "被创建", this.warpRouter);
     },
     mounted() {
         pop();
     },
     beforeDestory() {
-        this.warpRouterSet.delete(this);
+        this.warpRouter.routes.delete(this);
+        const fullPath = getFullPath(this.warpRouter);
+        const rawChilds = getAllRawChilds(this.$slot);
+        rawChilds.length = 0;
+        console.log(fullPath, "已经移除");
     },
     render(h) {
-        if (!this.data.show) {
-            return;
-        }
         const rawChilds = getAllRawChilds(this.$slot);
-        const child = h(this.props.component, this.props, rawChilds, undefined, this.wrapVnode.zid);
-        child.achor = this.wrapVnode.achor;
-        child.parent = this.wrapVnode.parent;
-        return child;
+        const fullPath = this.fullPath = getFullPath(this.warpRouter);
+        let show = compareList(fullPath, currentHash.split("/") || [""])
+        console.log(fullPath, currentHash.split("/") || [""], show);
+        if (show) {
+            const child = h(this.props.component, this.props, rawChilds, undefined, this.wrapVnode.zid);
+            child.achor = this.wrapVnode.achor;
+            child.parent = this.wrapVnode.parent;
+            return child;
+        }
     },
 });
 // CONCATENATED MODULE: ./src/core/init.js
@@ -3104,6 +3144,7 @@ class sact_Sact {
     });
     this.effects.length = 0;
     this.$vnode = undefined;
+    this.destoryed = true;
   }
 
 

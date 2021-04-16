@@ -52,7 +52,7 @@ export class Vnode {
 
 
 export function createVnode(vm, a, b, c, type, zid) {
-    const { components } = vm;
+    const  components  = vm.$components;
     //组件
     if (Reflect.ownKeys(components).indexOf(a) > -1) {
         return createComponent(components[a], b, vm, c, a, zid, type);

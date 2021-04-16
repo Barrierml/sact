@@ -1,6 +1,6 @@
 import { queueJob } from "../core/scheduler.js";
 import { isArray, sactWarn } from "../tools/untils.js"
-//用来存储所有路由信息
+//存储所有路由表
 const Router = {
     children: {},
     routes: new Set(),
@@ -20,8 +20,6 @@ const props = {
 
 let Router_inited = false;
 
-window.r = Router;
-
 function Router_init() {
     window.addEventListener('hashchange', () => {
         currentHash = getHash(window.location.hash);
@@ -30,13 +28,13 @@ function Router_init() {
     })
     Router_inited = true;
 }
-
+const log = () => { };
 
 function route() {
 
     const n = currentHash.split("/");
     const o = oldHash.split("/");
-    console.log("检测到变化,从", o, n)
+    log("检测到变化,从", o, n)
     let nRoute = Router; //新旧指针
     let oRoute;
 
@@ -58,18 +56,17 @@ function route() {
     nRoute = nRoute.children[n[i]];
     oRoute = oRoute.children[o[i]];
     if (nRoute) {
-        nRoute.routes.forEach(routerOpen);
+        nRoute.routes.forEach(routerTigger);
         currentRouter = nRoute;
     }
     if (oRoute) {
-        oRoute && oRoute.routes.forEach(routerClose);
+        oRoute && oRoute.routes.forEach(routerTigger);
     }
 }
 
 
 //先对外层环境进行更新，更新插槽然后再进行更新
-const routerClose = (e) => { console.log("关闭", e.fullPath); queueJob(e.wrapVnode.context._patch); e.data.show = false; }
-const routerOpen = (e) => { console.log("开启", e.fullPath); queueJob(e.wrapVnode.context._patch); e.data.show = true; }
+const routerTigger = (e) => { queueJob(e.wrapVnode.context._patch); queueJob(e._patch) }
 
 
 //检查参数
@@ -101,9 +98,11 @@ function getFullPath(route) {
     return res.reverse();
 }
 
+
+//fullpath compare with currentHash
 function compareList(l1, l2) {
     if ((isArray(l1) && isArray(l2))) {
-        for (let i = 0; i < Math.min(l1.length, l2.length); i++) {
+        for (let i = 0; i < l1.length; i++) {
             if (l1[i] !== l2[i]) {
                 return false;
             }
@@ -114,7 +113,7 @@ function compareList(l1, l2) {
 }
 
 
-//压入栈
+//添加新路由
 function addRouter(path, sact) {
     const current = currentRouter || stack[stack.length - 1];
     const children = (current ? current : Router).children;
@@ -145,20 +144,15 @@ export default {
     isShowAttr: false,
     propsCheck: false,
     props,
-    data() {
-        return {
-            show: false,
-        }
-    },
     beforeMount() {
-        this.components = this.wrapVnode.context.components;
+        this.$components = this.wrapVnode.context.$components;
         if (!Router_inited) {
             Router_init();
         }
         const [path] = checkProps(this.props);
         addRouter(path, this);
         const fullPath = getFullPath(this.warpRouter);
-        console.log(fullPath, "被创建", this.warpRouter);
+        log(fullPath, "被创建", this.warpRouter);
     },
     mounted() {
         pop();
@@ -166,15 +160,13 @@ export default {
     beforeDestory() {
         this.warpRouter.routes.delete(this);
         const fullPath = getFullPath(this.warpRouter);
-        const rawChilds = getAllRawChilds(this.$slot);
-        rawChilds.length = 0;
-        console.log(fullPath, "已经移除");
+        log(fullPath, "已经移除");
     },
     render(h) {
         const rawChilds = getAllRawChilds(this.$slot);
         const fullPath = this.fullPath = getFullPath(this.warpRouter);
-        let show = compareList(fullPath, currentHash.split("/") || [""])
-        console.log(fullPath, currentHash.split("/") || [""], show);
+        let show = compareList(fullPath, currentHash.split("/") || [""]);
+        log(fullPath, currentHash.split("/") || [""], show);
         if (show) {
             const child = h(this.props.component, this.props, rawChilds, undefined, this.wrapVnode.zid);
             child.achor = this.wrapVnode.achor;

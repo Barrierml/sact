@@ -14,9 +14,9 @@ let cid = 0;
 
 export default function initAll(options) {
     this.$options = options;
+    initParma(this);
     initWhen(this);
     this.callHooks("beforeCreate");
-    initParma(this);
     initElement(this);
     initProps(this);
     initMethod(this);
@@ -26,7 +26,7 @@ export default function initAll(options) {
 
     this.callHooks("created");
     //仓库模式无需初始化
-    if (this._isStore) {
+    if (this.$swtich._isStore) {
         initStore(this);
     }
     else {
@@ -39,17 +39,18 @@ export default function initAll(options) {
 
 function initParma(sact) {
     const { isShowAttr, propsTransfrom, propsCheck } = sact.$options;
-    sact._isShowAttr = isShowAttr === undefined ? true : isShowAttr; //默认显示属性在组件上
-    sact._propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
-    sact._propsCheck = propsCheck === undefined ? true : propsCheck; //是否开启属性检查,非声明props不接受
+    const $swtich = sact.$swtich = new Object(); //用于存储sact的各种开关和初始变量
+    $swtich._isShowAttr = isShowAttr === undefined ? true : isShowAttr; //默认显示属性在组件上
+    $swtich._propsTransfrom = propsTransfrom === undefined ? false : true; //将空属性转换成true，false
+    $swtich._propsCheck = propsCheck === undefined ? true : propsCheck; //是否开启属性检查,非声明props不接受
 }
 //初始化对象
 function initElement(sact) {
-
-    sact._mounted = false;
-    sact._isStore = false;
-    sact._shouldMount = true;
-    sact.uid = cid++;
+    const { $swtich } = sact;
+    $swtich._mounted = false;
+    $swtich._isStore = false;
+    $swtich._shouldMount = true;
+    sact.$sactId = cid++; //每一个sact独有的一个id
 
     const el = sact.$options.el || sact.$options.ele;
     let { store, template, component } = sact.$options;
@@ -57,11 +58,11 @@ function initElement(sact) {
     if (isStore(el)) {
 
         let baseList = traverse(el);
-        sact._isStore = true;
-        sact._goods = [];
+        $swtich._isStore = true;
+        $swtich._goods = [];
 
         baseList.forEach((good) => {
-            sact._goods.push({
+            $swtich._goods.push({
                 el: good,
                 store: sact,
                 component,
@@ -73,7 +74,7 @@ function initElement(sact) {
         sact.$ele = getRealDom(el);
         template = template || sact.$ele.outerHTML;
         if (store) {
-            sact.$store = store;
+            $swtich.$store = store;
         }
 
     }
@@ -186,7 +187,7 @@ function initMethod(sact) {
             sact[funName] = m[funName].bind(sact);
         };
     }
-    sact.effects = [];
+    sact.$effects = []; //存储所有effect
     sact._c_ = (a, b, c, type, zid) => createVnode(sact, a, b, c, type, zid);
     sact._f_ = (i, f) => createFor(i, f);
 }
@@ -195,25 +196,26 @@ function initMethod(sact) {
 //初始化组件功能
 function initComponent(sact) {
     const options = sact.$options;
+    const { $swtich } = sact;
     let { isComponent, component, isAbstract } = options;
     if (isComponent) { //自身为组件时
-        sact.isComponent = true;
-        sact.isAbstract = isAbstract; //抽象组件
+        $swtich.isComponent = true;
+        $swtich.isAbstract = isAbstract; //抽象组件
         sact.name = options.name;
-        sact._shouldMount = false;
+        $swtich._shouldMount = false;
     }
     //内置keep-alive、 transition 、route ;
-    sact.components = { transition: Sact.component(transition), route: Sact.component(route) };
+    sact.$components = { transition: Sact.component(transition), route: Sact.component(route) };
     if (isObj(component)) { //使用组件时,将组件添加到环境中
         for (let con of Reflect.ownKeys(component)) {
             if (component[con].isComponent) {
-                sact.components[component[con].sname] = component[con];
+                sact.$components[component[con].sname] = component[con];
             }
             else if (isObj(component[con])) {
                 if (!component[con].name) {
                     throw new Error("[Sact-warn]:you must set a name for component!")
                 }
-                sact.components[component[con].name] = Sact.component(component[con]);
+                sact.$components[component[con].name] = Sact.component(component[con]);
             }
         }
     }
@@ -223,8 +225,8 @@ function initComponent(sact) {
 //初始化渲染功能
 function initRender(sact) {
     const options = sact.$options;
-
-    if (sact.isAbstract === true) {
+    const { $swtich } = sact;
+    if ($swtich.isAbstract === true) {
         sact._render = () => null
     }
     else {
@@ -373,9 +375,9 @@ function initWhen(sact) {
 }
 
 function initPatch(sact) {
-
+    const { $swtich } = sact;
     let job = function () {
-        if (this._mounted) {
+        if ($swtich._mounted) {
             this.callHooks("beforeUpdate");
         }
         else {
@@ -392,7 +394,7 @@ function initPatch(sact) {
 
         this.$ele = this.$vnode && this.$vnode.element;
 
-        if (this._mounted) {
+        if ($swtich) {
             this.callHooks("updated");
         }
         else {
@@ -406,16 +408,17 @@ function initPatch(sact) {
 
     recordInstanceBoundEffect(sact._patch, sact);
 
-    if (sact._shouldMount) {
+    if ($swtich._shouldMount) {
         sact._patch();
-        sact._mounted = true;
-        sact._shouldMount = false;
+        $swtich._mounted = true;
+        $swtich._shouldMount = false;
     }
 }
 
 //初始化仓库
 function initStore(sact) {
-    sact._goods = sact._goods.map((opts) => {
+    const { $swtich } = sact;
+    $swtich._goods = $swtich._goods.map((opts) => {
         return new Sact(opts)
     })
 }
