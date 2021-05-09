@@ -74,7 +74,7 @@ function initElement(sact) {
         sact.$ele = getRealDom(el);
         template = template || sact.$ele.outerHTML;
         if (store) {
-            $swtich.$store = store;
+            sact.$store = store;
         }
 
     }
@@ -394,7 +394,7 @@ function initPatch(sact) {
 
         this.$ele = this.$vnode && this.$vnode.element;
 
-        if ($swtich) {
+        if ($swtich._mounted) {
             this.callHooks("updated");
         }
         else {

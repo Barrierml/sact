@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据双向绑定</title>
+    <script src="../dist/sact.js"></script>
+    <link rel="stylesheet" href="./main.css">
+</head>
+
+<body>
+    <div class="root" id="app1">
+        sadasd
+    </div>
+    这里是静态内容
+    <div class="root" id="app2">
+        {{$store.data.message}}
+    </div>
+    这里是静态内容
+    <div class="root" id="app3">
+        <input s-model:value="$store.data.message">
+    </div>
+</body>
+<script>
+    new Sact({
+        el: [document.querySelector("#app1"), document.querySelector("#app2"),document.querySelector("#app3")],
+        data: {
+            message: "你好，Sact！"
+        }
+    })
+</script>
+
+</html>

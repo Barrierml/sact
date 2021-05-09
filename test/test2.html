@@ -1,137 +1,27 @@
 <!DOCTYPE html>
 <html lang="zh-cn">
-
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
 </head>
-<style>
-    .animatable {
-        margin: 5px;
-        width: 100px;
-        height: 100px;
-        background: black;
-      }
-      
-      @keyframes animateOpacity {
-        0% {
-          opacity: 1;
-        }
-        100% {
-          opacity: 0;
-        }
-      }
-      
-      @keyframes animatePosition {
-        0% {
-          transform: translate3d(0, 0, 0);
-        }
-        100% {
-          transform: translate3d(0, 15px, 0);
-        }
-      }
-      
-      @keyframes animateRotation {
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-      
-      .animatable.being-animated {
-        animation:
-          animateOpacity 1s ease 0s forwards,
-          animatePosition 1.5s ease 0s forwards,
-          animateRotation 2s ease 0s forwards;
-      }
-</style>
 <body>
-    <div class="animatable"></div>
-    <div class="animatable"></div>
-</body>
-<script>
-    const addAnimationEndAllEvent = (() => {
-        const weakMap = new WeakMap()
-      
-        const initAnimationsObject = (element, expectedAnimations, eventName) => {
-          const events = weakMap.get(element)
-          const animationsCompleted = {}
-          for (const animation of expectedAnimations) {
-            animationsCompleted[animation] = false
-          }
-          events[eventName] = animationsCompleted
-        }
-      
-        return (element, expectedAnimations, eventName = 'animationendall') => {
-          if (!weakMap.has(element)) weakMap.set(element, {})
-      
-          if (expectedAnimations) {
-            initAnimationsObject(element, expectedAnimations, eventName)
-          }
-      
-          // When any animation completes...
-          element.addEventListener('animationend', ({ target, animationName }) => {
-            const events = weakMap.get(target)
-            
-            // Use all animations, if there were none provided earlier
-            if (!events[eventName]) {
-              initAnimationsObject(target, window.getComputedStyle(target).animationName.split(', '), eventName)
-            }
-            
-            const animationsCompleted = events[eventName]
-            
-            // Ensure this animation should be tracked
-            if (!(animationName in animationsCompleted)) return
-      
-            // Mark the current animation as complete (true)
-            animationsCompleted[animationName] = true
-      
-            // If every animation is now completed...
-            if (Object.values(animationsCompleted).every(
-              isCompleted => isCompleted === true
-            )) {
-              const animations = Object.keys(animationsCompleted)
-      
-              // Fire the event
-              target.dispatchEvent(new CustomEvent(eventName, {
-                detail: { target, animations },
-              }))
-      
-              // Reset for next time - set all animations to not complete (false)
-              initAnimationsObject(target, animations, eventName)
-            }
-          })
-        }
-      })()
-      
-      const toggleAnimation = ({ target }) => {
-        target.classList.toggle('being-animated')
-      }
-      
-      document.querySelectorAll('.animatable').forEach(element => {
-        // Wait for all animations before firing the default event "animationendall"
-        addAnimationEndAllEvent(element)
-      
-        // Wait for the provided animations before firing the event "animationend2"
-        addAnimationEndAllEvent(element, [
-          'animateOpacity',
-          'animatePosition'
-        ], 'animationend2')
-      
-        // Listen for our added "animationendall" event
-        element.addEventListener('animationendall', ({detail: { target, animations }}) => {
-          console.log(`Animations: ${animations.join(', ')} - Complete`)
-        })
-      
-        // Listen for our added "animationend2" event
-        element.addEventListener('animationend2', ({detail: { target, animations }}) => {
-          console.log(`Animations: ${animations.join(', ')} - Complete`)
-        })
-      
-        // Just updated this to function on click, so we can test animation multiple times
-        element.addEventListener('click', toggleAnimation)
-      })
-</script>
 
+  <div id="root" name="tom">
+    你好
+  </div>
+</body>
+<script type="module">
+  const nextTick = Promise.resolve();
+  console.log("同步代码1");
+  nextTick.then(()=>{
+    console.log("微任务2")
+  });
+  setTimeout(()=>{
+    console.log("宏任务3")
+  })
+  console.log("同步代码4");
+</script>
 </html>
+

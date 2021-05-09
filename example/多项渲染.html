@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据双向绑定</title>
+    <script src="../dist/sact.js"></script>
+    <link rel="stylesheet" href="./main.css">
+</head>
+
+<body>
+    <div id="root">
+        <div s-for="item in list">
+           我要 {{ item }}
+        </div>
+        <input s-model:value="input">
+        <button @click="list.push(input)">添加</button>
+        <button @click="list.pop()">删除</button>
+    </div>
+</body>
+<script>
+    Sact.link()
+        .el("#root")
+        .data({
+            list: ["吃饭", "睡觉", "学习"],
+            input: "",
+        })
+        .do;
+</script>
+
+</html>

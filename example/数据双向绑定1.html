@@ -1,28 +1,29 @@
 <!DOCTYPE html>
 <html lang="zh-cn">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>特效</title>
+    <title>数据双向绑定</title>
+    <script src="../dist/sact.js"></script>
+    <link rel="stylesheet" href="./main.css">
 </head>
 <body>
-    <style>
-
-    </style>
     <div id="root">
-        <div s-if="show">
-            123
+        <div>
+            {{ message }}
         </div>
+        <input s-model:value="message">
     </div>
 </body>
-<script src="../dist/sact.js"></script>
 <script>
     Sact.link()
-    .el("#root")
-    .data({
-        show:true
-    })
-    .do;
+        .el("#root")
+        .data({
+            message:"你好，Sact！"
+        })
+        .do;
 </script>
+
 </html>

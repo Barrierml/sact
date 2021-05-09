@@ -1,5 +1,5 @@
 import { queueJob } from "../core/scheduler.js";
-import { isArray, sactWarn } from "../tools/untils.js"
+import { compareStringList, isArray, sactWarn } from "../tools/untils.js"
 //存储所有路由表
 const Router = {
     children: {},
@@ -7,7 +7,7 @@ const Router = {
 };
 //用来保存递归深度
 const stack = [];
-const getHash = (hash) => (hash && hash.slice(1)) || "/";
+const getHash = (hash) => (hash && hash.slice(1)).trim() || "/";
 let currentHash = getHash(window.location.hash);
 let oldHash = currentHash;
 let currentRouter = null;
@@ -28,13 +28,14 @@ function Router_init() {
     })
     Router_inited = true;
 }
-const log = () => { };
+const log = console.log;
 
 function route() {
 
     const n = currentHash.split("/");
     const o = oldHash.split("/");
     log("检测到变化,从", o, n)
+
     let nRoute = Router; //新旧指针
     let oRoute;
 
@@ -51,10 +52,17 @@ function route() {
     currentRouter = nRoute;
     oRoute = nRoute;
 
+    if(!nRoute){
+        log("这是个404页面！")
+    }
+
     //通知新的开启旧的关闭
     //只用通知最外层即可
     nRoute = nRoute.children[n[i]];
     oRoute = oRoute.children[o[i]];
+
+
+
     if (nRoute) {
         nRoute.routes.forEach(routerTigger);
         currentRouter = nRoute;
@@ -136,6 +144,12 @@ function pop() {
     stack.pop();
 }
 
+function clearProps(props) {
+    const del = Reflect.deleteProperty;
+    del(props, "path");
+    del(props, "component");
+    return props;
+}
 
 window.r = Router;
 export default {
@@ -163,12 +177,12 @@ export default {
         log(fullPath, "已经移除");
     },
     render(h) {
-        const rawChilds = getAllRawChilds(this.$slot);
         const fullPath = this.fullPath = getFullPath(this.warpRouter);
-        let show = compareList(fullPath, currentHash.split("/") || [""]);
+        const show = compareList(fullPath, currentHash.split("/") || [""]);
         log(fullPath, currentHash.split("/") || [""], show);
         if (show) {
-            const child = h(this.props.component, this.props, rawChilds, undefined, this.wrapVnode.zid);
+            const rawChilds = getAllRawChilds(this.$slot);
+            const child = h(this.props.component, clearProps(this.props), rawChilds, undefined, this.wrapVnode.zid);
             child.achor = this.wrapVnode.achor;
             child.parent = this.wrapVnode.parent;
             return child;

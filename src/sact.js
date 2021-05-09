@@ -10,20 +10,20 @@ export default class Sact {
   }
   destory() {
     this.callHooks("beforeDestory");
-    this.effects.forEach(v => {
+    this.$effects.forEach(v => {
       stop(v);
     });
-    this.effects.length = 0;
+    this.$effects.length = 0;
     this.$vnode = undefined;
     this.destoryed = true;
   }
-
-
 }
+
+
 Sact.version = "0.2.1";
 
 Sact.component = function (options) {
-  if(!options.name){
+  if (!options.name) {
     throw new Error("[Sact-warn]:you must set a name for component!")
   }
   let Ctor = function () { return new Sact({ ...options, isComponent: true }) }
